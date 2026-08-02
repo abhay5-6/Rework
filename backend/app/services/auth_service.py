@@ -3,11 +3,11 @@
 import secrets
 import string
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.core.config import settings
+from app.repositories.user_repository import user_repo
 
 
 def generate_secure_token(length: int = 32) -> str:
@@ -26,10 +26,7 @@ async def request_password_reset(
     Returns:
         Reset token if user exists, None otherwise
     """
-    result = await db.execute(
-        select(User).where(User.email == email)
-    )
-    user = result.scalar()
+    user = await user_repo.get_by_email(db, email=email)
 
     if not user:
         return None
@@ -57,12 +54,7 @@ async def validate_reset_token(
     Returns:
         User if token is valid, None otherwise
     """
-    result = await db.execute(
-        select(User).where(
-            User.password_reset_token == token
-        )
-    )
-    user = result.scalar()
+    user = await user_repo.get_by_reset_token(db, token=token)
 
     if not user:
         return None
@@ -91,10 +83,7 @@ async def generate_email_verification_token(
     Returns:
         Verification token if user exists, None otherwise
     """
-    result = await db.execute(
-        select(User).where(User.id == user_id)
-    )
-    user = result.scalar()
+    user = await user_repo.get(db, id=user_id)
 
     if not user:
         return None
@@ -119,12 +108,7 @@ async def verify_email_token(
     Returns:
         User if token is valid, None otherwise
     """
-    result = await db.execute(
-        select(User).where(
-            User.email_verification_token == token
-        )
-    )
-    user = result.scalar()
+    user = await user_repo.get_by_verification_token(db, token=token)
 
     if not user:
         return None
