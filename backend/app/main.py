@@ -17,7 +17,7 @@ from app.routes.messages import router as messages_router
 from app.websocket.chat import router as websocket_router
 from contextlib import asynccontextmanager
 from app.db.database import Base
-from app.core.config import BACKEND_CORS_ORIGINS
+from app.core.config import BACKEND_CORS_ORIGINS, settings
 from app.core.exceptions import (
     database_exception_handler,
     http_exception_handler,
@@ -43,8 +43,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if settings.app_env == "development":
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("development_mode: ran create_all")
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -124,6 +126,8 @@ async def request_context_middleware(
 
     return response
 from app.routes.tasks import router as tasks_router
+from app.routes.organization import router as org_router
+from app.routes.desk import router as desk_router
 
 app.include_router(auth_router)
 app.include_router(rooms_router)
@@ -137,6 +141,8 @@ app.include_router(
 )
 app.include_router(files.router)
 app.include_router(tasks_router)
+app.include_router(org_router, prefix="/orgs", tags=["Organizations"])
+app.include_router(desk_router, prefix="/desks", tags=["Desks"])
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

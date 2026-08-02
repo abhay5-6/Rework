@@ -22,11 +22,9 @@ async def extract_relationship(
     target_text: str
 ):
 
-    print(
-        "Extracting relationship between two memories with content lengths:",
-        len(source_text),
-        "and",
-        len(target_text)
+    logger.debug(
+        "extracting_relationship",
+        extra={"source_len": len(source_text), "target_len": len(target_text)},
     )
 
     prompt = f"""
@@ -78,9 +76,9 @@ Memory B:
         ):
             return None
 
-        print(
-            "Relationship extracted:",
-            relationship
+        logger.debug(
+            "relationship_extracted",
+            extra={"relationship": relationship},
         )
 
         return relationship

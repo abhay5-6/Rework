@@ -21,6 +21,11 @@ type WebRTCSignalMessage = {
   data: WebRTCSignalData;
 };
 
+/**
+ * Custom React Hook for WebRTC Mesh Peer-to-Peer Video/Audio Calling.
+ * Handles local camera/mic stream capture, ICE candidate exchange, SDP offer/answer signaling over WebSocket,
+ * and remote peer stream tracking.
+ */
 export function useWebRTC(roomId: number, currentUser: string, socketRef: React.MutableRefObject<WebSocket | null>) {
   void roomId;
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);

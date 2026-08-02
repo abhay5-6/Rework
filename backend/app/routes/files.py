@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.room_service import get_room_by_id
+from app.schemas.common import FileUploadResponse
 
 router = APIRouter(prefix="/rooms", tags=["Files"])
 
@@ -18,7 +19,7 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-@router.post("/{room_id}/files")
+@router.post("/{room_id}/files", response_model=FileUploadResponse)
 async def upload_file(
     room_id: int,
     file: UploadFile = File(...),

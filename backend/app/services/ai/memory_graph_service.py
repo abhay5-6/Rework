@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 
 from app.models.room_memory import (
@@ -12,6 +14,8 @@ from app.services.ai.relationship_extractor import (
     extract_relationship
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def build_memory_relationships(
 
@@ -19,7 +23,7 @@ async def build_memory_relationships(
 
     new_memory
 ):
-    print("Building relationships for new memory_id:", new_memory.id, "in room_id:", new_memory.room_id)
+    logger.debug("building_relationships", extra={"memory_id": new_memory.id, "room_id": new_memory.room_id})
 
     result = await db.execute(
 
@@ -65,4 +69,4 @@ async def build_memory_relationships(
         db.add(edge)
 
     await db.flush()
-    print("Relationships built for new memory_id:", new_memory.id)
+    logger.debug("relationships_built", extra={"memory_id": new_memory.id})

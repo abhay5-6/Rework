@@ -2,14 +2,25 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.room import Room
+from app.models.desk import Desk
 from app.schemas.room import RoomCreate
 
 from app.models.membership import RoomMembership
+from app.models.organization import OrgMembership
 from app.models.user import User
 from app.models.message import Message
 
 from app.models.join_request import (
     RoomJoinRequest
+)
+from app.services.join_request_service import create_join_request
+from app.core.exceptions import (
+    RoomAlreadyExistsException,
+    RoomAlreadyJoinedException,
+    RoomMembershipRequiredException,
+    RoomNotFoundException,
+    RoomOwnerCannotLeaveException,
+    RoomOwnerRequiredException,
 )
 
 
@@ -20,20 +31,31 @@ async def create_room(
     room_data: RoomCreate,
     creator: User
 ):
-    existing_room = await db.execute(
-        select(Room).where(
-            Room.name == room_data.name
+    if room_data.organization_id is not None:
+        org_mem = await db.execute(
+            select(OrgMembership).where(
+                OrgMembership.org_id == room_data.organization_id,
+                OrgMembership.user_id == creator.id
+            )
         )
-    )
+        if not org_mem.scalar_one_or_none():
+            raise RoomAlreadyExistsException()
+
+    query = select(Room).where(Room.name == room_data.name)
+    if room_data.organization_id is not None:
+        query = query.where(Room.organization_id == room_data.organization_id)
+        
+    existing_room = await db.execute(query)
 
     if existing_room.scalar():
-        return None
+        raise RoomAlreadyExistsException()
 
     room = Room(
         name=room_data.name,
         description=room_data.description,
         is_private=room_data.is_private,
         ai_enabled=room_data.ai_enabled,
+        organization_id=room_data.organization_id,
         owner_id=creator.id
     )
 
@@ -49,6 +71,14 @@ async def create_room(
 
     db.add(membership)
 
+    # Auto-create default desk
+    default_desk = Desk(
+        name="general",
+        description="General discussion channel",
+        room_id=room.id
+    )
+    db.add(default_desk)
+
     await db.commit()
 
     await db.refresh(room)
@@ -59,24 +89,34 @@ async def create_room(
 async def get_rooms(
     db: AsyncSession,
     current_user: User,
+    organization_id: int | None = None,
     skip: int = 0,
     limit: int = 10
 ):
+    if organization_id is not None:
+        org_mem = await db.execute(
+            select(OrgMembership).where(
+                OrgMembership.org_id == organization_id,
+                OrgMembership.user_id == current_user.id
+            )
+        )
+        if not org_mem.scalar_one_or_none():
+            return {"items": [], "total": 0}
 
     # Get total count of rooms
-    count_result = await db.execute(
-        select(Room)
-    )
-    total_rooms = len(
-        count_result.scalars().all()
-    )
+    count_stmt = select(Room)
+    if organization_id is not None:
+        count_stmt = count_stmt.where(Room.organization_id == organization_id)
+    count_result = await db.execute(count_stmt)
+    total_rooms = len(count_result.scalars().all())
 
     # Fetch paginated rooms
-    result = await db.execute(
-        select(Room).offset(
-            skip
-        ).limit(limit)
-    )
+    stmt = select(Room)
+    if organization_id is not None:
+        stmt = stmt.where(Room.organization_id == organization_id)
+    stmt = stmt.offset(skip).limit(limit)
+    
+    result = await db.execute(stmt)
 
     rooms = result.scalars().all()
 
@@ -185,7 +225,7 @@ async def join_room(
 
     if not room:
 
-        return "room_not_found"
+        raise RoomNotFoundException()
 
     membership_result = await db.execute(
         select(RoomMembership).where(
@@ -200,7 +240,7 @@ async def join_room(
 
     if existing_membership:
 
-        return "already_joined"
+        raise RoomAlreadyJoinedException()
 
     # PUBLIC ROOM
     if not room.is_private:
@@ -221,45 +261,11 @@ async def join_room(
     
 
     # PRIVATE ROOM
-
-    existing_request_result = (
-        await db.execute(
-
-            select(RoomJoinRequest).where(
-                RoomJoinRequest.user_id
-                    == user.id,
-
-                RoomJoinRequest.room_id
-                    == room_id,
-
-                RoomJoinRequest.status
-                    == "pending"
-            )
-        )
-    )
-
-    existing_request = (
-        existing_request_result.scalar()
-    )
-
-    if existing_request:
-
-        return "request_pending"
-
-    join_request = RoomJoinRequest(
-
-        user_id=user.id,
-
+    return await create_join_request(
+        db=db,
         room_id=room_id,
-
-        status="pending"
+        user_id=user.id,
     )
-
-    db.add(join_request)
-
-    await db.commit()
-
-    return "request_sent"
 async def leave_room(
     db: AsyncSession,
     room_id: int,
@@ -275,7 +281,7 @@ async def leave_room(
     room = room_result.scalar()
 
     if not room:
-        return "room_not_found"
+        raise RoomNotFoundException()
 
     membership_result = await db.execute(
         select(RoomMembership).where(
@@ -287,10 +293,10 @@ async def leave_room(
     membership = membership_result.scalar()
 
     if not membership:
-        return "not_member"
+        raise RoomMembershipRequiredException()
 
     if membership.role == "owner":
-        return "owner_cannot_leave"
+        raise RoomOwnerCannotLeaveException()
 
     await db.delete(membership)
 
@@ -314,10 +320,10 @@ async def delete_room(
     room = room_result.scalar()
 
     if not room:
-        return "room_not_found"
+        raise RoomNotFoundException()
 
     if room.owner_id != user.id:
-        return "not_owner"
+        raise RoomOwnerRequiredException("Only owner can delete room")
 
     memberships_result = await db.execute(
         select(RoomMembership).where(
@@ -353,240 +359,6 @@ async def delete_room(
 
     return "deleted"
 
-async def get_pending_requests(
-    db: AsyncSession,
-    current_user: User
-):
-
-    owner_memberships_result = (
-        await db.execute(
-
-            select(RoomMembership).where(
-                RoomMembership.user_id
-                    == current_user.id,
-
-                RoomMembership.role
-                    == "owner"
-            )
-        )
-    )
-
-    owner_memberships = (
-        owner_memberships_result
-        .scalars()
-        .all()
-    )
-
-    owned_room_ids = [
-        membership.room_id
-        for membership
-        in owner_memberships
-    ]
-
-    if not owned_room_ids:
-        return []
-
-    requests_result = await db.execute(
-
-        select(
-            RoomJoinRequest,
-            Room,
-            User
-        )
-        .join(
-            Room,
-            RoomJoinRequest.room_id
-                == Room.id
-        )
-        .join(
-            User,
-            RoomJoinRequest.user_id
-                == User.id
-        )
-        .where(
-            RoomJoinRequest.room_id.in_(
-                owned_room_ids
-            ),
-
-            RoomJoinRequest.status
-                == "pending"
-        )
-    )
-
-    requests = requests_result.all()
-
-    formatted_requests = []
-
-    for request, room, user in requests:
-
-        formatted_requests.append({
-
-            "request_id":
-                request.id,
-
-            "room_id":
-                room.id,
-
-            "room_name":
-                room.name,
-
-            "user_id":
-                user.id,
-
-            "username":
-                user.username,
-
-            "status":
-                request.status
-        })
-
-    return formatted_requests
-
-
-async def approve_join_request(
-    db: AsyncSession,
-    request_id: int,
-    current_user: User
-):
-
-    request_result = await db.execute(
-
-        select(RoomJoinRequest).where(
-            RoomJoinRequest.id
-                == request_id
-        )
-    )
-
-    join_request = (
-        request_result.scalar()
-    )
-
-    if not join_request:
-        return "request_not_found"
-
-    membership_result = await db.execute(
-
-        select(RoomMembership).where(
-
-            RoomMembership.user_id
-                == current_user.id,
-
-            RoomMembership.room_id
-                == join_request.room_id
-        )
-    )
-
-    membership = (
-        membership_result.scalar()
-    )
-
-    if (
-        not membership
-        or membership.role
-            != "owner"
-    ):
-
-        return "not_owner"
-
-    existing_member_result = (
-        await db.execute(
-
-            select(RoomMembership).where(
-
-                RoomMembership.user_id
-                    == join_request.user_id,
-
-                RoomMembership.room_id
-                    == join_request.room_id
-            )
-        )
-    )
-
-    existing_member = (
-        existing_member_result.scalar()
-    )
-
-    if existing_member:
-
-        return "already_member"
-
-    new_membership = (
-        RoomMembership(
-            user_id=
-                join_request.user_id,
-
-            room_id=
-                join_request.room_id,
-
-            role="member"
-        )
-    )
-
-    db.add(new_membership)
-
-    join_request.status = (
-        "approved"
-    )
-
-    await db.commit()
-
-    return "approved"
-
-
-async def reject_join_request(
-    db: AsyncSession,
-    request_id: int,
-    current_user: User
-):
-
-    request_result = await db.execute(
-
-        select(RoomJoinRequest).where(
-            RoomJoinRequest.id
-                == request_id
-        )
-    )
-
-    join_request = (
-        request_result.scalar()
-    )
-
-    if not join_request:
-        return "request_not_found"
-
-    membership_result = await db.execute(
-
-        select(RoomMembership).where(
-
-            RoomMembership.user_id
-                == current_user.id,
-
-            RoomMembership.room_id
-                == join_request.room_id
-        )
-    )
-
-    membership = (
-        membership_result.scalar()
-    )
-
-    if (
-        not membership
-        or membership.role
-            != "owner"
-    ):
-
-        return "not_owner"
-
-    join_request.status = (
-        "rejected"
-    )
-
-    await db.commit()
-
-    return "rejected"
-
-
 async def toggle_room_ai(
     db: AsyncSession,
     room_id: int,
@@ -599,13 +371,11 @@ async def toggle_room_ai(
     room = room_result.scalar()
 
     if not room:
-        return "room_not_found"
+        raise RoomNotFoundException()
 
     if room.owner_id != user.id:
-        return "not_owner"
+        raise RoomOwnerRequiredException("Only owner can update room")
 
     room.ai_enabled = ai_enabled
     await db.commit()
     return "updated"
-
-

@@ -1,3 +1,5 @@
+import logging
+
 from collections import deque
 
 from sqlalchemy import select
@@ -13,6 +15,9 @@ from app.models.room_memory import (
 from app.services.ai.retrieval_service import (
     search_room_memories
 )
+
+logger = logging.getLogger(__name__)
+
 RELATIONSHIP_WEIGHTS = {
 
     "DEPENDS_ON": 1.0,
@@ -39,7 +44,7 @@ async def multi_hop_graph_retrieval(
 
     max_depth: int = 2
 ):
-    print("Starting multi-hop graph retrieval for room_id:", room_id, "with query:", query)
+    logger.debug("multi_hop_retrieval_started", extra={"room_id": room_id, "query": query})
 
     primary_memories = await (
         search_room_memories(
@@ -157,4 +162,3 @@ async def multi_hop_graph_retrieval(
             )
 
     return collected_memories
-    print("Multi-hop graph retrieval completed for room_id:", room_id, "with query:", query, "retrieved memories count:", len(collected_memories))

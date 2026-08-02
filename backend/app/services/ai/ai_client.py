@@ -1,3 +1,5 @@
+import logging
+
 from google import genai
 
 from app.core.config import (
@@ -13,17 +15,17 @@ client = genai.Client(
     api_key=GEMINI_API_KEY
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def generate_room_answer(
     db,
     room_id: int,
     query: str,
 ):
-    print(
-        "Generating room answer for room_id:",
-        room_id,
-        "with query:",
-        query,
+    logger.debug(
+        "generating_room_answer",
+        extra={"room_id": room_id, "query": query},
     )
 
     context = await build_room_context(
@@ -63,9 +65,9 @@ USER QUESTION:
 
     answer = response.text
 
-    print(
-        "Room answer generated for room_id:",
-        room_id,
+    logger.debug(
+        "room_answer_generated",
+        extra={"room_id": room_id},
     )
 
     return answer
@@ -74,7 +76,7 @@ USER QUESTION:
 async def generate_web_search_answer(
     query: str,
 ):
-    print("Generating web search answer for query:", query)
+    logger.debug("generating_web_search_answer", extra={"query": query})
 
     prompt = f"""
 You are Rework AI, a collaborative team assistant.
@@ -95,6 +97,6 @@ USER QUERY:
     )
 
     answer = response.text
-    print("Web search answer generated")
+    logger.debug("web_search_answer_generated")
 
     return answer

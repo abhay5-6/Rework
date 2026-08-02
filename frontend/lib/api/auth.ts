@@ -11,102 +11,34 @@ export async function getAuthProviders(): Promise<AuthProviders> {
 }
 
 export function getProviderAuthUrl(provider: "google" | "github") {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000")
-    .replace(/\/$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
   return `${baseUrl}/auth/${provider}/start`;
 }
 
-
-export async function register(
-
-  username: string,
-
-  email: string,
-
-  password: string
-) {
-
-  const response =
-    await api.post(
-
-      "/auth/register",
-
-      {
-        username,
-        email,
-        password
-      }
-    );
-
+export async function register(username: string, email: string, password: string) {
+  const response = await api.post("/auth/register", {
+    username,
+    email,
+    password,
+  });
   return response.data;
 }
 
+export async function login(email: string, password: string) {
+  const formData = new URLSearchParams();
+  formData.append("username", email);
+  formData.append("password", password);
 
-export async function login(
-  email: string,
-  password: string
-) {
-
-  const formData =
-    new URLSearchParams();
-
-  formData.append(
-    "username",
-    email
-  );
-
-  formData.append(
-    "password",
-    password
-  );
-
-  const response =
-    await api.post(
-
-      "/auth/login",
-
-      formData,
-
-      {
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded",
-        },
-      }
-    );
+  const response = await api.post("/auth/login", formData, {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
 
   return response.data;
 }
-
 
 export async function getMe() {
-
-  const token =
-    sessionStorage.getItem(
-      "token"
-    ) || localStorage.getItem(
-      "token"
-    );
-
-  if (!token) {
-
-    throw new Error(
-      "No token found"
-    );
-  }
-
-  const response =
-    await api.get(
-
-      "/auth/me",
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
-    );
-
+  const response = await api.get("/auth/me");
   return response.data;
 }

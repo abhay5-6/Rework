@@ -56,6 +56,11 @@ from app.services.ai.ai_client import (
 from app.services.ai.hybrid_retrieval_service import (
     retrieve_context
 )
+from app.schemas.common import (
+    MemoryReinforceResponse,
+    MessageOnlyResponse,
+    RoomAiAnswerResponse,
+)
 
 router = APIRouter(
     prefix="/rooms",
@@ -179,7 +184,8 @@ async def hybrid_search(
 
 
 @router.get(
-    "/{room_id}/ai"
+    "/{room_id}/ai",
+    response_model=RoomAiAnswerResponse
 )
 @limiter.limit(settings.ai_rate_limit)
 async def room_ai_query(
@@ -216,7 +222,10 @@ async def get_stale(
     memories = await get_stale_memories(db, room_id, days_old)
     return memories
 
-@router.post("/{room_id}/memories/{memory_id}/reinforce")
+@router.post(
+    "/{room_id}/memories/{memory_id}/reinforce",
+    response_model=MemoryReinforceResponse
+)
 async def reinforce(
     room_id: int,
     memory_id: int,
@@ -264,7 +273,10 @@ async def edit_memory(
     await db.commit()
     return memory
 
-@router.delete("/{room_id}/memories/{memory_id}")
+@router.delete(
+    "/{room_id}/memories/{memory_id}",
+    response_model=MessageOnlyResponse
+)
 async def delete_stale_memory(
     room_id: int,
     memory_id: int,

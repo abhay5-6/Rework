@@ -67,7 +67,8 @@ async def send_message(
     message = Message(
         content=message_data.content,
         sender_id=user.id,
-        room_id=room_id
+        room_id=room_id,
+        desk_id=getattr(message_data, 'desk_id', None)
     )
 
     db.add(message)
@@ -96,22 +97,14 @@ async def get_room_messages(
     if not allowed:
         return None
 
-    result = await db.execute(
-
+    stmt = (
         select(Message, User)
-        .join(
-            User,
-            Message.sender_id == User.id
-        )
-        .where(
-            Message.room_id == room_id
-        )
-        .order_by(
-            Message.created_at
-        )
-        .offset(offset)
-        .limit(limit)
+        .outerjoin(User, Message.sender_id == User.id)
+        .where(Message.room_id == room_id)
     )
+
+    stmt = stmt.order_by(Message.created_at).offset(offset).limit(limit)
+    result = await db.execute(stmt)
 
     messages = result.all()
 
@@ -129,11 +122,13 @@ async def get_room_messages(
 
             "room_id": message.room_id,
 
+            "desk_id": message.desk_id,
+
             "created_at":
                 message.created_at,
 
             "username":
-                sender.username,
+                sender.username if sender else "Rework AI",
                 
             "extra_data": message.extra_data
         })
@@ -146,7 +141,8 @@ async def create_realtime_message(
     room_id: int,
     user: User | None,
     content: str,
-    extra_data: dict = None
+    extra_data: dict = None,
+    desk_id: int | None = None
 ):
     if user is not None:
         allowed = await has_room_access(
@@ -162,6 +158,7 @@ async def create_realtime_message(
         content=content,
         sender_id=user.id if user else None,
         room_id=room_id,
+        desk_id=desk_id,
         extra_data=extra_data or {}
     )
 

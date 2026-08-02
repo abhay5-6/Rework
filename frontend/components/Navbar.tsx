@@ -2,15 +2,42 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { BrainCircuit, LayoutGrid, LogOut } from "lucide-react";
+import { BrainCircuit, LayoutGrid, LogOut, Network, ChevronDown, Settings } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import NotificationBell from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useOrgStore, Organization, OrgMembership } from "@/lib/store/orgStore";
+import { getOrganizations } from "@/lib/api/organizations";
+import { useState, useRef, useEffect } from "react";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const auth = useAuth();
+  const { organizations, activeOrgId, setActiveOrgId, setOrganizations } = useOrgStore();
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowOrgDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      getOrganizations().then((data) => {
+        setOrganizations(data);
+        if (data.length > 0 && !activeOrgId) {
+          setActiveOrgId(data[0].id);
+        }
+      }).catch(console.error);
+    }
+  }, [auth.isAuthenticated, setOrganizations, activeOrgId, setActiveOrgId]);
 
   function handleLogout() {
     auth.logout();
@@ -42,11 +69,11 @@ export default function Navbar() {
           </Link>
 
           {auth.isAuthenticated && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <Link
                 href="/rooms"
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition ${
-                  isActive("/rooms")
+                  isActive("/rooms") && !isActive("/orgs")
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
@@ -54,6 +81,58 @@ export default function Navbar() {
                 <LayoutGrid size={16} />
                 Rooms
               </Link>
+
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowOrgDropdown(!showOrgDropdown)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition ${
+                    isActive("/orgs")
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border"
+                  }`}
+                >
+                  <Network size={16} />
+                  <span className="max-w-[120px] truncate font-medium">
+                    {organizations.find((o) => o.id === activeOrgId)?.name || "Select Org"}
+                  </span>
+                  <ChevronDown size={14} className="opacity-50" />
+                </button>
+
+                {showOrgDropdown && (
+                  <div className="absolute left-0 mt-2 w-56 rounded-xl border border-border bg-background shadow-lg overflow-hidden py-1">
+                    <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Organizations
+                    </div>
+                    {organizations.map((org) => (
+                      <button
+                        key={org.id}
+                        onClick={() => {
+                          setActiveOrgId(org.id);
+                          setShowOrgDropdown(false);
+                          if (pathname !== "/rooms") router.push("/rooms");
+                        }}
+                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left transition ${
+                          activeOrgId === org.id
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <Network size={14} className={activeOrgId === org.id ? "text-primary" : "text-muted-foreground"} />
+                        <span className="truncate">{org.name}</span>
+                      </button>
+                    ))}
+                    <div className="my-1 border-t border-border" />
+                    <Link
+                      href="/orgs"
+                      onClick={() => setShowOrgDropdown(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition"
+                    >
+                      <Settings size={14} />
+                      Manage Organizations
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

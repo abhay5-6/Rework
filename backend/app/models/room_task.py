@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Integer,
     ForeignKey,
@@ -34,7 +34,7 @@ class RoomTask(Base):
     status: Mapped[str] = mapped_column(String(50), default="todo")
     
     # When the AI detected it
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     
     # When it was completed
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -7,10 +7,6 @@ export async function uploadRoomFile(
   file: File,
   onProgress?: (progressEvent: AxiosProgressEvent) => void
 ) {
-  const token =
-    sessionStorage.getItem("token") ||
-    localStorage.getItem("token");
-
   const formData = new FormData();
   formData.append("file", file);
 
@@ -19,7 +15,6 @@ export async function uploadRoomFile(
     formData,
     {
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "multipart/form-data",
       },
       onUploadProgress: onProgress,

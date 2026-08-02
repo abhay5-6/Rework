@@ -1,8 +1,12 @@
+import logging
+
 from sqlalchemy import select
 
 from app.models.room_memory import (
     RoomMemory
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def find_similar_memory(
@@ -15,7 +19,7 @@ async def find_similar_memory(
 
     threshold: float = 0.92
 ):
-    print("Finding similar memory for room_id:", room_id, "with threshold:", threshold)
+    logger.debug("finding_similar_memory", extra={"room_id": room_id, "threshold": threshold})
     similarity_expr = (
         1 -
         RoomMemory.embedding.cosine_distance(
@@ -68,5 +72,5 @@ async def find_similar_memory(
     if similarity < threshold:
         return None
 
-    print("Similar memory found for room_id:", room_id, "with similarity:", similarity)
+    logger.debug("similar_memory_found", extra={"room_id": room_id, "similarity": similarity})
     return memory

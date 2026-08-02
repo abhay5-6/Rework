@@ -10,17 +10,11 @@ export interface Task {
 }
 
 export async function getRoomTasks(roomId: number): Promise<Task[]> {
-  const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-  const response = await api.get(`/rooms/${roomId}/tasks`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const response = await api.get(`/rooms/${roomId}/tasks`);
   return response.data;
 }
 
 export async function updateTask(roomId: number, taskId: number, updates: Partial<Pick<Task, "status" | "completed_at">> & { completed?: boolean }): Promise<Task> {
-  const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-  const response = await api.patch(`/rooms/${roomId}/tasks/${taskId}`, updates, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const response = await api.patch(`/rooms/${roomId}/tasks/${taskId}`, updates);
   return response.data;
 }

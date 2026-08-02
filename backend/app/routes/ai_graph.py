@@ -21,6 +21,7 @@ from app.core.rate_limit import limiter
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.message_service import has_room_access
+from app.schemas.common import RoomGraphResponse
 
 
 router = APIRouter(
@@ -32,7 +33,8 @@ router = APIRouter(
 
 
 @router.get(
-    "/graph/{room_id}"
+    "/graph/{room_id}",
+    response_model=RoomGraphResponse
 )
 @limiter.limit(settings.ai_rate_limit)
 async def get_room_graph(

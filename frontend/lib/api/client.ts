@@ -7,6 +7,17 @@ const api = axios.create({
       .NEXT_PUBLIC_API_URL,
 });
 
+api.interceptors.request.use((config) => {
+  // Only access storage on client side
+  if (typeof window !== "undefined") {
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 api.interceptors.response.use(
 
   (response) => response,

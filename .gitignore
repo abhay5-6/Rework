@@ -1,26 +1,46 @@
 # Python
 backend/venv/
+.venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Node
 frontend/node_modules/
 
+# Next.js
+.next/
+frontend/.next/
+out/
+build/
+
 # Environment
 .env
 .env.local
+.env.*
 
 # OS
 .DS_Store
 Thumbs.db
 
-.next/
-dist/
-coverage/
+# Logs and Checkpoints
 *.log
-backend/_wheelcheck/torch-2.12.0-cp313-cp313-win_amd64.whl
 logs/
 *.pid
 *.jobid
+
+# Data and Uploads
+backend/uploads/
+*.sqlite3
+
+# IDEs and Tools
+.vscode/
+.idea/
+.codehistory/
+.gemini/
+
+# Wheel files
 _wheelcheck/
 *.whl

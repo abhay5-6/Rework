@@ -123,9 +123,9 @@ Message:
             .strip()
         )
 
-        print(
-            "RAW MEMORY RESPONSE:",
-            raw_response
+        logger.debug(
+            "raw_memory_response",
+            extra={"response": raw_response},
         )
 
         if (

@@ -11,6 +11,69 @@ from starlette.exceptions import HTTPException
 logger = logging.getLogger(__name__)
 
 
+class DomainException(Exception):
+    """Base domain exception for service-layer business errors."""
+
+
+class UserAlreadyExistsException(DomainException):
+    """Raised when an account already exists for provided identity data."""
+
+
+class EmailAlreadyRegisteredException(UserAlreadyExistsException):
+    def __init__(self) -> None:
+        super().__init__("Email already registered")
+
+
+class UsernameAlreadyTakenException(UserAlreadyExistsException):
+    def __init__(self) -> None:
+        super().__init__("Username already taken")
+
+
+class RoomAlreadyExistsException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Room already exists")
+
+
+class RoomNotFoundException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Room not found")
+
+
+class RoomAlreadyJoinedException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Already joined")
+
+
+class RoomJoinRequestPendingException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Request already pending")
+
+
+class RoomMembershipRequiredException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Not a member")
+
+
+class RoomOwnerCannotLeaveException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Owner cannot leave room")
+
+
+class RoomOwnerRequiredException(DomainException):
+    def __init__(self, message: str = "Not authorized") -> None:
+        super().__init__(message)
+
+
+class JoinRequestNotFoundException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Request not found")
+
+
+class AlreadyMemberException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Already member")
+
+
 def _request_context(request: Request) -> dict:
     return {
         "path": request.url.path,

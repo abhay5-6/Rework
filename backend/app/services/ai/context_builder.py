@@ -1,6 +1,10 @@
+import logging
+
 from sqlalchemy.ext.asyncio import (
     AsyncSession
 )
+
+logger = logging.getLogger(__name__)
 
 from app.services.ai.hybrid_retrieval_service import (
     retrieve_context
@@ -15,11 +19,9 @@ async def build_room_context(
 
     query: str
 ):
-    print(
-        "Building context for room_id:",
-        room_id,
-        "with query:",
-        query
+    logger.debug(
+        "building_room_context",
+        extra={"room_id": room_id, "query": query},
     )
 
     retrieval_result = await retrieve_context(
@@ -33,7 +35,7 @@ async def build_room_context(
     messages = retrieval_result["messages"]
     memories = retrieval_result["memories"]
 
-    print(f"CONTEXT_BUILDER: Retrieved {len(messages)} messages, {len(memories)} memories")
+    logger.debug("context_retrieved", extra={"messages": len(messages), "memories": len(memories)})
 
     context_parts = []
 
@@ -148,10 +150,9 @@ Content:
         context_parts
     )
 
-    print(
-        "Context built with",
-        len(context_parts),
-        "sections"
+    logger.debug(
+        "context_built",
+        extra={"sections": len(context_parts)},
     )
 
     return context

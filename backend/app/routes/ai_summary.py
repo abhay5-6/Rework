@@ -24,6 +24,7 @@ from app.services.ai.memory_summary_service import (
 )
 
 from app.services.message_service import has_room_access
+from app.schemas.common import MemorySummaryResponse
 
 router = APIRouter(
     prefix="/ai",
@@ -31,7 +32,7 @@ router = APIRouter(
 )
 
 
-@router.get("/summary/{room_id}")
+@router.get("/summary/{room_id}", response_model=MemorySummaryResponse)
 @limiter.limit(settings.ai_rate_limit)
 
 async def summarize_room_memory(

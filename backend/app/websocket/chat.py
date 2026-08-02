@@ -102,27 +102,20 @@ async def websocket_chat(
     websocket: WebSocket,
     room_id: int
 ):
-    origin = websocket.headers.get(
-        "origin"
-    )
+    origin = websocket.headers.get("origin")
 
-    if (
-        origin
-        and origin not in WEBSOCKET_ALLOWED_ORIGINS
-    ):
-        logger.warning(
-            "websocket_origin_rejected",
-            extra={
-                "room_id": room_id,
-                "origin": origin
-            }
-        )
-
-        await websocket.close(
-            code=1008
-        )
-
-        return
+    if origin and settings.app_env != "development":
+        allowed_normalized = [o.rstrip("/") for o in WEBSOCKET_ALLOWED_ORIGINS]
+        if origin.rstrip("/") not in allowed_normalized:
+            logger.warning(
+                "websocket_origin_rejected",
+                extra={
+                    "room_id": room_id,
+                    "origin": origin
+                }
+            )
+            await websocket.close(code=1008)
+            return
 
     token = websocket.query_params.get(
         "token"
@@ -274,6 +267,8 @@ async def websocket_chat(
 
                     content = data.get("message")
                     extra_data = data.get("extra_data", {})
+                    desk_id = data.get("desk_id")
+                    temp_id = data.get("temp_id")
 
                     if not isinstance(content, str):
                         await send_error(websocket, "Message must be text")
@@ -308,7 +303,8 @@ async def websocket_chat(
                         room_id,
                         user,
                         content,
-                        extra_data
+                        extra_data,
+                        desk_id
                     )
 
                     if not saved_message:
@@ -340,9 +336,11 @@ async def websocket_chat(
                                 user.username,
 
                             "room_id": room_id,
+                            "desk_id": saved_message.desk_id,
                             "message": saved_message.content,
                             "extra_data": saved_message.extra_data,
-                            "created_at": saved_message.created_at.replace(tzinfo=timezone.utc).isoformat()
+                            "created_at": saved_message.created_at.replace(tzinfo=timezone.utc).isoformat(),
+                            "temp_id": temp_id
                         }
                     }
 

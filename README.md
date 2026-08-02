@@ -1,278 +1,128 @@
-# Rework - Real-Time Collaboration Platform
+# Rework - Cognitive Workspace & Real-Time Collaboration Platform
 
-Live Demo: https://rework-hu9apeyxg-abhay5-6s-projects.vercel.app/
+A modern, open-source, multi-tenant collaboration platform with channel-based workspaces, automatic AI memory indexing, WebSockets, offline resiliency, and WebRTC video calls.
 
-A modern real-time collaborative chat platform built with FastAPI, Next.js, PostgreSQL, and WebSockets.
+Built with **FastAPI**, **Next.js (App Router)**, **PostgreSQL**, **Zustand**, and **TailwindCSS**.
 
-Rework combines real-time communication, room-based collaboration, moderation tools, hierarchy systems, and live notifications into a scalable full-stack architecture.
+---
 
-## demo
-demo in /demo
+## ✨ Features & Highlights
 
-Features
-Authentication
-JWT-based authentication
-Secure login/register system
-Protected API routes
-Persistent frontend auth state
-Room System
-Create public or private rooms
-Join/leave rooms
-Room ownership system
-Real-time room communication
-Real-Time Messaging
-WebSocket-powered chat
-Live message broadcasting
-Typing indicators
-Online user tracking
-Auto-reconnect handling
-Private Room Access Requests
-Request access to private rooms
-Approve/reject requests
-Notification-based request workflow
-Hierarchy & Moderation
-Owner / Admin / Member roles
-Promote or demote users
-Remove members
-Permission-based governance system
-Notifications
-Navbar notification system
-Live join request notifications
-Pending request tracking
-Tech Stack
-Frontend
-Next.js
-React
-TypeScript
-TailwindCSS
-Axios
-WebSockets
-Sonner (toast notifications)
-Backend
-FastAPI
-SQLAlchemy (Async)
-PostgreSQL
-JWT Authentication
-WebSockets
-Pydantic
-Project Structure
-backend/
-├── app/
-│   ├── core/
-│   ├── db/
-│   ├── models/
-│   ├── routes/
-│   ├── schemas/
-│   ├── services/
-│   └── websocket/
-│
-frontend/
-├── app/
-├── components/
-├── hooks/
-├── lib/
-│   ├── api/
-│   └── websocket/
-├── public/
-└── stores/
-Backend Architecture
+### 🏢 Multi-Tenant Organizations & Workspaces
+- **Organizations**: Root tenant context (`Org -> Workspaces -> Channels`).
+- **Workspaces (Rooms)**: Public or private workspaces within an organization.
+- **Channels (Desks)**: Topic-based communication channels (e.g., `#general`, `#dev`).
+- **Governance**: Granular owner, admin, and member role-based access control.
 
-The backend follows a layered architecture:
+### ⚡ Real-Time Messaging & Resilient Engine
+- **WebSocket Engine**: Sub-10ms real-time chat, typing indicators, and online presence tracking.
+- **Offline Queue**: Messages typed while offline are stored securely in `localStorage` (`queueStore`) and automatically flushed upon WebSocket reconnection.
+- **Optimistic UI**: Instant visual message rendering with sending/retry state badges.
 
-Routes
+### 🧠 Automatic AI Memory Indexing
+- **Semantic Extraction**: Asynchronously extracts decisions, notes, and tasks from messages into room memory.
+- **AI Assistant & Knowledge Graph**: Query room memory directly in the AI Assistant panel or visualize connections in the Interactive Memory Graph.
 
-Responsible for:
+### 📹 Live Video Calls & Task Board
+- **WebRTC Mesh Video**: Peer-to-peer audio/video calling within any workspace channel.
+- **Kanban Board**: Drag-and-drop task management built into every workspace.
 
-HTTP endpoints
-request/response handling
-authentication dependency injection
-Services
+---
 
-Responsible for:
+## 🏗️ System Architecture
 
-business logic
-room logic
-moderation logic
-message persistence
-membership management
-Models
+For a deep dive into the database domain model, real-time message flow, and AI extraction engine, read our [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-SQLAlchemy database models.
+```
++-------------------------------------------------------------+
+|                     Next.js 14 Frontend                     |
+|         (Zustand Stores, Offline Queue, React Hooks)         |
++---------------------+-----------------------+---------------+
+                      |                       |
+            REST APIs |                       | WebSockets
+                      v                       v
++---------------------+-----------------------+---------------+
+|                    FastAPI Backend Engine                   |
+|         (Authentication, Room Logic, Socket Manager)        |
++---------------------+-----------------------+---------------+
+                      |                       |
+            SQLAlchemy|                       | Async Tasks
+                      v                       v
++---------------------+-------+   +-----------+---------------+
+| PostgreSQL Database         |   | AI Memory Extractor       |
+| (Orgs, Rooms, Desks, Chat)  |   | (SentenceTransformers / Vector)|
++-----------------------------+   +---------------------------+
+```
 
-Schemas
+---
 
-Pydantic request/response validation.
+## 🛠️ Tech Stack
 
-WebSocket Layer
+### Frontend
+- **Framework**: Next.js 14 (App Router) + React 18
+- **State Management**: Zustand (with LocalStorage Persistence)
+- **Styling**: Vanilla TailwindCSS + Lucide Icons + Next-Themes (Dark/Light mode)
+- **Real-Time & Calls**: Custom WebSocket Engine + WebRTC
 
-Handles:
+### Backend
+- **Framework**: FastAPI (Python 3.11+)
+- **Database**: PostgreSQL + SQLAlchemy (Async ORM) + AsyncPG
+- **Security**: JWT Authentication + Password Hashing (Bcrypt) + Rate Limiting
+- **AI & ML**: Gemini / Ollama + SentenceTransformers (Vector Embeddings)
 
-socket authentication
-live messaging
-typing events
-online presence
-broadcasting
-Frontend Architecture
+---
 
-The frontend is intentionally kept lightweight.
+## 🚀 Quickstart & Setup
 
-API Layer
+### 1. Prerequisites
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL database instance
 
-All HTTP calls are centralized inside:
+### 2. Backend Setup
 
-lib/api/
+```bash
+cd backend
 
-This prevents scattered fetch logic and improves maintainability.
+# Create & activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-WebSocket Layer
-
-Socket creation and connection logic are isolated from UI rendering.
-
-Component Structure
-reusable UI components
-room-specific pages
-centralized auth provider
-notification components
-Real-Time System
-
-Rework uses a hybrid architecture:
-
-REST API
-
-Used for:
-
-authentication
-room creation
-join requests
-moderation
-fetching messages
-WebSockets
-
-Used for:
-
-live chat
-typing indicators
-online users
-realtime events
-
-This architecture keeps the application scalable and stable.
-
-Installation
-Clone Repository
-git clone <your-repository-url>
-cd rework
-Backend Setup
-Create Virtual Environment
-python -m venv venv
-Activate Virtual Environment
-Windows
-venv\Scripts\activate
-Linux / Mac
-source venv/bin/activate
-Install Dependencies
+# Install dependencies
 pip install -r requirements.txt
-Configure Environment Variables
 
-Create:
+# Configure environment variables
+cp .env.example .env
 
-backend/.env
-
-Example:
-
-DATABASE_URL=postgresql+asyncpg://postgres:password@localhost/rework_db
-SECRET_KEY=your_secret_key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-Run Backend
+# Run FastAPI development server
 uvicorn app.main:app --reload
+```
 
-Backend runs on:
+The backend server will run on **`http://127.0.0.1:8000`**.
 
-http://127.0.0.1:8000
-Frontend Setup
-Install Dependencies
+### 3. Frontend Setup
+
+```bash
+cd frontend
+
+# Install npm dependencies
 npm install
-Configure Environment Variables
 
-Create:
+# Configure environment variables
+cp .env.example .env.local
 
-frontend/.env.local
-
-Example:
-
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
-NEXT_PUBLIC_WS_URL=ws://127.0.0.1:8000
-Run Frontend
+# Run Next.js development server
 npm run dev
+```
 
-Frontend runs on:
+The frontend application will run on **`http://localhost:3000`**.
 
-http://localhost:3000
-API Highlights
-Authentication
-POST /auth/register
-POST /auth/login
-GET  /auth/me
-Rooms
-GET    /rooms/
-POST   /rooms/
-POST   /rooms/{room_id}/join
-POST   /rooms/{room_id}/leave
-DELETE /rooms/{room_id}
-Messages
-GET  /rooms/{room_id}/messages
-POST /rooms/{room_id}/messages
-Governance
-GET  /rooms/{room_id}/members
-POST /rooms/{room_id}/promote/{user_id}
-POST /rooms/{room_id}/demote/{user_id}
-POST /rooms/{room_id}/remove/{user_id}
-Join Requests
-GET  /rooms/join-requests
-POST /rooms/join-requests/{request_id}/approve
-POST /rooms/join-requests/{request_id}/reject
-Current Status
-Implemented
-Authentication
-Public/private rooms
-Real-time chat
-WebSocket lifecycle handling
-Notifications
-Join request workflow
-Role hierarchy system
-Moderation controls
-Planned
-Friend system
-Direct messages
-AI-powered room features
-Advanced notifications
-Deployment scaling improvements
-Deployment Plan
-Frontend
-Vercel
-Backend
-Railway or Render
-Database
-Neon PostgreSQL
-Screenshots
+---
 
-Add screenshots here after deployment.
+## 📜 License & Contribution
 
-Learning Goals Behind The Project
+Rework is open-source software licensed under the **Apache 2.0 License**.
 
-This project was built to explore:
+Contributions are welcome! Please check our [ARCHITECTURE.md](./ARCHITECTURE.md) to understand the system design before submitting Pull Requests.
 
-scalable realtime architecture
-async backend systems
-websocket lifecycle management
-role-based permissions
-frontend/backend separation
-production-style API design
-License
-
-This project is open-source and available under the MIT License.
-
-Author
-
-Built by Abhay Tewatia.
-
+Built with ❤️ by Abhay Tewatia and the open-source community.

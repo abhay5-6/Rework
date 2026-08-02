@@ -5,6 +5,10 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 from app.core.security import hash_password
 from app.core.security import verify_password
+from app.core.exceptions import (
+    EmailAlreadyRegisteredException,
+    UsernameAlreadyTakenException,
+)
 
 
 async def create_user(
@@ -24,8 +28,8 @@ async def create_user(
     conflict = existing_user.scalar()
     if conflict:
         if conflict.email == user_data.email:
-            return "EMAIL_TAKEN"
-        return "USERNAME_TAKEN"
+            raise EmailAlreadyRegisteredException()
+        raise UsernameAlreadyTakenException()
 
     new_user = User(
         username=user_data.username,

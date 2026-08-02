@@ -18,6 +18,11 @@ class Room(Base):
         index=True
     )
 
+    organization_id: Mapped[int | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True
+    )
+
     name: Mapped[str] = mapped_column(
         String(100),
         unique=True,

@@ -1,3 +1,5 @@
+import logging
+
 from google import genai
 
 from app.core.config import (
@@ -22,6 +24,8 @@ client = genai.Client(
     api_key=GEMINI_API_KEY
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def generate_memory_summary(
 
@@ -34,11 +38,9 @@ async def generate_memory_summary(
     created_by: int
 ):
 
-    print(
-        "Generating memory summary for room_id:",
-        room_id,
-        "with topic_query:",
-        topic_query
+    logger.debug(
+        "generating_memory_summary",
+        extra={"room_id": room_id, "topic_query": topic_query},
     )
 
     memories = await (
@@ -120,11 +122,9 @@ Memories:
 
     await db.commit()
 
-    print(
-        "Memory summary generated and stored with id:",
-        stored_summary.id,
-        "in room_id:",
-        room_id
+    logger.debug(
+        "memory_summary_stored",
+        extra={"memory_id": stored_summary.id, "room_id": room_id},
     )
 
     return {

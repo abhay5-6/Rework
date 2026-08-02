@@ -1,7 +1,11 @@
+import logging
+
 from datetime import (
     datetime,
     timezone
 )
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import (
     select
@@ -74,10 +78,16 @@ async def search_room_memories(
 
     top_k: int = 5
 ):
-    print(f"SEARCH START: room_id={room_id}, query='{query}'")
+    logger.debug(
+        "search_started",
+        extra={"room_id": room_id, "query": query},
+    )
 
     query_embedding = await generate_embedding(query)
-    print(f"SEARCH: Query embedding dims={len(query_embedding)}")
+    logger.debug(
+        "query_embedding_generated",
+        extra={"dims": len(query_embedding)},
+    )
 
     similarity_expr = (
         1 -
@@ -117,21 +127,33 @@ async def search_room_memories(
 
     rows = result.all()
 
-    print(f"SEARCH: Found {len(rows)} raw results from DB")
+    logger.debug(
+        "raw_results_found",
+        extra={"count": len(rows), "room_id": room_id},
+    )
 
     scored_memories = []
 
     for memory, similarity in rows:
 
         if similarity is None:
-            print(f"  Memory {memory.id}: SKIP (similarity=None)")
+            logger.debug(
+                "memory_skip_null_similarity",
+                extra={"memory_id": memory.id},
+            )
             continue
 
         if similarity < 0.10:
-            print(f"  Memory {memory.id}: SKIP (similarity={similarity:.3f} < 0.10)")
+            logger.debug(
+                "memory_skip_low_similarity",
+                extra={"memory_id": memory.id, "similarity": similarity},
+            )
             continue
 
-        print(f"  Memory {memory.id}: similarity={similarity:.3f}, content='{memory.content[:50]}...'")
+        logger.debug(
+            "memory_scored",
+            extra={"memory_id": memory.id, "similarity": similarity, "content_preview": memory.content[:50]},
+        )
 
         importance_weight = (
             memory.importance_score
@@ -236,17 +258,19 @@ async def search_room_memories(
         )
     ]
 
-    print(f"SEARCH RESULT: Returning {len(top_memories)} memories from {len(scored_memories)} scored")
+    logger.debug(
+        "search_complete",
+        extra={"returned": len(top_memories), "scored": len(scored_memories), "room_id": room_id},
+    )
 
     for memory in top_memories:
 
         memory.access_count += 1
 
         memory.last_accessed_at = (
-            datetime.utcnow()
+            datetime.now(timezone.utc)
         )
 
     await db.commit()
 
     return top_memories
-    print("Completed searching room memories for room_id:", room_id, "with query:", query, "retrieved memories count:", len(top_memories))

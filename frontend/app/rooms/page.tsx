@@ -17,7 +17,9 @@ import {
 import { toast } from "sonner";
 
 import { createRoom, deleteRoom, getRooms, joinRoom, leaveRoom } from "@/lib/api/rooms";
+import { getOrganizations } from "@/lib/api/organizations";
 import { isAuthenticated } from "@/lib/auth";
+import { useOrgStore } from "@/lib/store/orgStore";
 
 type Room = {
   id: number;
@@ -43,6 +45,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export default function RoomsPage() {
   const router = useRouter();
+  const { activeOrgId, setActiveOrgId, setOrganizations } = useOrgStore();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -74,39 +77,86 @@ export default function RoomsPage() {
       return;
     }
 
-    loadRooms();
-  }, [router]);
-
-  async function loadRooms() {
-    try {
-      const data = await getRooms();
-      setRooms(data);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load rooms");
-    } finally {
-      setLoading(false);
+    async function initRooms() {
+      setLoading(true);
+      try {
+        let currentOrgId = activeOrgId;
+        if (!currentOrgId) {
+          const orgs = await getOrganizations();
+          if (orgs.length > 0) {
+            setOrganizations(orgs);
+            currentOrgId = orgs[0].id;
+            setActiveOrgId(currentOrgId);
+          }
+        }
+        if (currentOrgId) {
+          const data = await getRooms(currentOrgId);
+          setRooms(data);
+        } else {
+          setRooms([]);
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to load rooms");
+      } finally {
+        setLoading(false);
+      }
     }
-  }
+
+    initRooms();
+  }, [router, activeOrgId, setActiveOrgId, setOrganizations]);
 
   async function handleCreateRoom() {
     if (!name.trim()) {
       return;
     }
 
+    let targetOrgId = activeOrgId;
+    if (!targetOrgId) {
+      try {
+        const orgs = await getOrganizations();
+        if (orgs.length > 0) {
+          targetOrgId = orgs[0].id;
+          setActiveOrgId(targetOrgId);
+          setOrganizations(orgs);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    if (!targetOrgId) {
+      toast.error("Please create an organization first");
+      router.push("/orgs");
+      return;
+    }
+
     try {
       setCreating(true);
-      await createRoom(name, description, isPrivate);
+      await createRoom(name, description, isPrivate, targetOrgId);
       toast.success("Workspace created");
       setName("");
       setDescription("");
       setIsPrivate(false);
-      await loadRooms();
+      const data = await getRooms(targetOrgId);
+      setRooms(data);
     } catch (error) {
       console.error(error);
       toast.error("Failed to create workspace");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function loadRooms(orgId?: number) {
+    const targetId = orgId || activeOrgId;
+    if (!targetId) return;
+    try {
+      const data = await getRooms(targetId);
+      setRooms(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load rooms");
     }
   }
 

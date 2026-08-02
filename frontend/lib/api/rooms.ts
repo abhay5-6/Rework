@@ -1,34 +1,12 @@
 import api from "./client";
 
-export async function getRooms() {
-
-  const token =
-    sessionStorage.getItem(
-      "token"
-    ) || localStorage.getItem(
-      "token"
-    );
-
-  if (!token) {
-
-    console.warn(
-      "No auth token found"
-    );
-
-    return [];
-  }
+export async function getRooms(organizationId?: number) {
 
   try {
-
+    const url = organizationId ? `/rooms/?organization_id=${organizationId}` : "/rooms/";
     const response =
       await api.get(
-        "/rooms/",
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
+        url
       );
 
     const payload = response.data;
@@ -62,17 +40,8 @@ export async function getRooms() {
 export async function getRoom(
   roomId: number
 ) {
-  const token =
-    sessionStorage.getItem("token") ||
-    localStorage.getItem("token");
-
   const response = await api.get(
-    `/rooms/${roomId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+    `/rooms/${roomId}`
   );
 
   return response.data;
@@ -82,24 +51,12 @@ export async function joinRoom(
   roomId: number
 ) {
 
-  const token =
-    localStorage.getItem(
-      "token"
-    );
-
   const response =
     await api.post(
 
       `/rooms/${roomId}/join`,
 
-      {},
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
+      {}
     );
 
   return response.data;
@@ -108,20 +65,9 @@ export async function joinRoom(
 export async function createRoom(
   name: string,
   description: string,
-  is_private: boolean
+  is_private: boolean,
+  organization_id?: number
 ) {
-
-  const token =
-    localStorage.getItem(
-      "token"
-    );
-
-  if (!token) {
-
-    throw new Error(
-      "No auth token found"
-    );
-  }
 
   const response =
     await api.post(
@@ -132,13 +78,7 @@ export async function createRoom(
         name,
         description,
         is_private,
-      },
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
+        organization_id,
       }
     );
 
@@ -149,24 +89,12 @@ export async function leaveRoom(
   roomId: number
 ) {
 
-  const token =
-    localStorage.getItem(
-      "token"
-    );
-
   const response =
     await api.post(
 
       `/rooms/${roomId}/leave`,
 
-      {},
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
+      {}
     );
 
   return response.data;
@@ -176,22 +104,10 @@ export async function deleteRoom(
   roomId: number
 ) {
 
-  const token =
-    localStorage.getItem(
-      "token"
-    );
-
   const response =
     await api.delete(
 
-      `/rooms/${roomId}`,
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
+      `/rooms/${roomId}`
     );
 
   return response.data;
@@ -207,22 +123,10 @@ export async function getRoomMembers(
   roomId: number
 ) {
 
-  const token =
-    localStorage.getItem(
-      "token"
-    );
-
   const response =
     await api.get(
 
-      `/rooms/${roomId}/members`,
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
+      `/rooms/${roomId}/members`
     );
 
   return response.data;
@@ -233,24 +137,12 @@ export async function promoteMember(
   userId: number
 ) {
 
-  const token =
-    localStorage.getItem(
-      "token"
-    );
-
   const response =
     await api.post(
 
       `/rooms/${roomId}/promote/${userId}`,
 
-      {},
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
+      {}
     );
 
   return response.data;
@@ -261,24 +153,12 @@ export async function demoteMember(
   userId: number
 ) {
 
-  const token =
-    localStorage.getItem(
-      "token"
-    );
-
   const response =
     await api.post(
 
       `/rooms/${roomId}/demote/${userId}`,
 
-      {},
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
+      {}
     );
 
   return response.data;
@@ -289,24 +169,12 @@ export async function removeMember(
   userId: number
 ) {
 
-  const token =
-    localStorage.getItem(
-      "token"
-    );
-
   const response =
     await api.post(
 
       `/rooms/${roomId}/remove/${userId}`,
 
-      {},
-
-      {
-        headers: {
-          Authorization:
-            `Bearer ${token}`,
-        },
-      }
+      {}
     );
 
   return response.data;
@@ -316,16 +184,9 @@ export async function toggleRoomAI(
   roomId: number,
   ai_enabled: boolean
 ) {
-  const token = localStorage.getItem("token");
-
   const response = await api.patch(
     `/rooms/${roomId}`,
-    { ai_enabled },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+    { ai_enabled }
   );
 
   return response.data;

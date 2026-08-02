@@ -12,9 +12,10 @@ class MessageResponse(BaseModel):
     content: str
     sender_id: int | None
     room_id: int
+    desk_id: int | None = None
     created_at: datetime
     username: str | None = None
-    extra_data: dict | None = None
+    extra_data: dict[str, object] | None = None
 
     @field_validator("created_at", mode="after")
     @classmethod

@@ -48,7 +48,7 @@ class ErrorDetail(BaseModel):
     """Standardized error detail model"""
     code: ErrorCode
     message: str
-    details: dict | None = None
+    details: dict[str, object] | None = None
     field: str | None = None
 
 
@@ -62,14 +62,14 @@ class ErrorResponse(BaseModel):
 class SuccessResponse(BaseModel):
     """Standardized API success response"""
     success: bool = True
-    data: dict | None = None
+    data: dict[str, object] | None = None
     message: str | None = None
 
 
 def create_error_response(
     code: ErrorCode,
     message: str,
-    details: dict | None = None,
+    details: dict[str, object] | None = None,
     field: str | None = None,
     request_id: str | None = None
 ) -> ErrorResponse:
@@ -86,7 +86,7 @@ def create_error_response(
 
 
 def create_success_response(
-    data: dict | None = None,
+    data: dict[str, object] | None = None,
     message: str | None = None
 ) -> SuccessResponse:
     """Helper function to create standardized success responses"""

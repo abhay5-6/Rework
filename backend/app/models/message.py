@@ -42,8 +42,13 @@ class Message(Base):
         ForeignKey("rooms.id")
     )
 
+    desk_id: Mapped[int | None] = mapped_column(
+        ForeignKey("desks.id", ondelete="CASCADE"),
+        nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
-        default=datetime.utcnow
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
     embedding: Mapped[list | None] = (
         mapped_column(

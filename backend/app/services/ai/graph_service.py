@@ -1,3 +1,5 @@
+import logging
+
 from random import randint
 
 from sqlalchemy import select
@@ -14,6 +16,8 @@ from app.models.memory_edge import (
     MemoryEdge
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def build_room_graph(
 
@@ -21,7 +25,7 @@ async def build_room_graph(
 
     room_id: int
 ):
-    print("Building graph for room_id:", room_id)
+    logger.debug("building_room_graph", extra={"room_id": room_id})
 
     memory_result = await db.execute(
 
@@ -115,4 +119,3 @@ async def build_room_graph(
 
         "edges": edges
     }
-    print("Graph built with", len(nodes), "nodes and", len(edges), "edges")

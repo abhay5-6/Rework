@@ -7,7 +7,7 @@ from app.models.room_memory import (
 )
 from app.models.user import User
 from sqlalchemy import select
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 async def create_room_memory(
@@ -72,7 +72,7 @@ async def create_room_memory(
     return memory
 
 async def get_stale_memories(db: AsyncSession, room_id: int, days_old: int = 30):
-    threshold_date = datetime.utcnow() - timedelta(days=days_old)
+    threshold_date = datetime.now(timezone.utc) - timedelta(days=days_old)
     query = select(RoomMemory).where(
         RoomMemory.room_id == room_id,
         RoomMemory.last_reinforced_at < threshold_date
@@ -130,7 +130,7 @@ async def reinforce_memory(
     result = await db.execute(query)
     memory = result.scalars().first()
     if memory:
-        memory.last_reinforced_at = datetime.utcnow()
+        memory.last_reinforced_at = datetime.now(timezone.utc)
         memory.confidence_score = min(1.0, memory.confidence_score + 0.2)
         await db.commit()
     return memory
@@ -157,7 +157,7 @@ async def update_memory(
 
     if content is not None:
         memory.content = content
-        memory.last_reinforced_at = datetime.utcnow()
+        memory.last_reinforced_at = datetime.now(timezone.utc)
         memory.confidence_score = 1.0
     if embedding is not None:
         memory.embedding = embedding

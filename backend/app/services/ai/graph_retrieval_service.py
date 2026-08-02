@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import select
 
 from app.models.memory_edge import (
@@ -12,6 +14,8 @@ from app.services.ai.retrieval_service import (
     search_room_memories
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def graph_enhanced_retrieval(
 
@@ -23,7 +27,7 @@ async def graph_enhanced_retrieval(
 
     top_k: int = 5
 ):
-    print("Starting graph-enhanced retrieval for room_id:", room_id, "with query:", query)
+    logger.debug("graph_enhanced_retrieval_started", extra={"room_id": room_id, "query": query})
     primary_memories = await (
         search_room_memories(
 
@@ -98,4 +102,3 @@ async def graph_enhanced_retrieval(
         primary_memories
         + related_memories
     )
-    print("Graph-enhanced retrieval completed for room_id:", room_id)

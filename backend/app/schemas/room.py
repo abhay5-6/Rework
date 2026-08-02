@@ -6,6 +6,7 @@ class RoomCreate(BaseModel):
     description: str | None = None
     is_private: bool = False
     ai_enabled: bool = True
+    organization_id: int | None = None
 
 class RoomUpdate(BaseModel):
     ai_enabled: bool

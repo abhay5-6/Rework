@@ -20,6 +20,8 @@ from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserResponse
+from app.schemas.common import AuthProvidersResponse
+from app.core.exceptions import UserAlreadyExistsException
 from app.services.user_service import authenticate_user, create_user
 
 
@@ -33,15 +35,11 @@ async def register(
     user: UserCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    created_user = await create_user(db, user)
-
-    if created_user == "EMAIL_TAKEN":
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    if created_user == "USERNAME_TAKEN":
-        raise HTTPException(status_code=400, detail="Username already taken")
-
-    return created_user
+    try:
+        created_user = await create_user(db, user)
+        return created_user
+    except UserAlreadyExistsException as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/login", response_model=Token)
@@ -67,7 +65,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.get("/providers")
+@router.get("/providers", response_model=AuthProvidersResponse)
 async def get_providers():
     return {
         "google": bool(
@@ -118,7 +116,7 @@ def _oauth_error(message: str) -> RedirectResponse:
     return RedirectResponse(location=location, status_code=302)
 
 
-@router.get("/{provider}/start")
+@router.get("/{provider}/start", response_model=None)
 async def start_oauth(provider: str):
     config = _provider_config(provider)
 
@@ -249,7 +247,7 @@ async def _unique_username(
         suffix += 1
 
 
-@router.get("/{provider}/callback")
+@router.get("/{provider}/callback", response_model=None)
 async def oauth_callback(
     provider: str,
     code: str | None = None,

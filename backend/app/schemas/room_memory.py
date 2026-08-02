@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, timezone
 
 
@@ -18,7 +18,7 @@ class RoomMemoryCreate(
 
     importance_score: int = 1
 
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
 
 
 class RoomMemoryUpdate(

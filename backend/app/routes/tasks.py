@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,16 +8,22 @@ from app.db.session import get_db
 from app.models.user import User
 from app.models.room_task import RoomTask
 from app.core.dependencies import get_current_user
+from app.services.message_service import has_room_access
 from app.websocket.manager import manager
+from app.schemas.common import RoomTaskResponse
 
 router = APIRouter(prefix="/rooms", tags=["Tasks"])
 
-@router.get("/{room_id}/tasks")
+@router.get("/{room_id}/tasks", response_model=list[RoomTaskResponse])
 async def get_room_tasks(
     room_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> List[Dict[str, Any]]:
+    allowed = await has_room_access(db, room_id, current_user)
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     query = select(RoomTask).where(RoomTask.room_id == room_id).order_by(RoomTask.created_at.desc())
     result = await db.execute(query)
     tasks = result.scalars().all()
@@ -34,7 +40,7 @@ async def get_room_tasks(
         for t in tasks
     ]
 
-@router.patch("/{room_id}/tasks/{task_id}")
+@router.patch("/{room_id}/tasks/{task_id}", response_model=RoomTaskResponse)
 async def update_room_task(
     room_id: int,
     task_id: int,
@@ -42,6 +48,10 @@ async def update_room_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
+    allowed = await has_room_access(db, room_id, current_user)
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     query = select(RoomTask).where(RoomTask.id == task_id, RoomTask.room_id == room_id)
     result = await db.execute(query)
     task = result.scalars().first()
@@ -52,7 +62,7 @@ async def update_room_task(
     if "status" in payload:
         task.status = payload["status"]
         if task.status == "done":
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
         else:
             task.completed_at = None
             

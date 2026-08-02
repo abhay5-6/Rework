@@ -1,16 +1,24 @@
+import logging
+
 from datetime import (
-    datetime
+    datetime,
+    timezone,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_decay_factor(
     memory
 ):
-    print("Calculating decay factor for memory_id:", memory.id)
+    logger.debug(
+        "calculating_decay_factor",
+        extra={"memory_id": memory.id},
+    )
 
     days_since_access = (
 
-        datetime.utcnow()
+        datetime.now(timezone.utc)
 
         -
 
@@ -28,4 +36,3 @@ def calculate_decay_factor(
     )
 
     return decay
-    

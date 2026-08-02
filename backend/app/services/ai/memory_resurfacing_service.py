@@ -1,10 +1,18 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def calculate_resurfacing_boost(
 
     similarity,
 
     memory
 ):
-    print("Calculating resurfacing boost for memory_id:", memory.id, "with similarity:", similarity)
+    logger.debug(
+        "calculating_resurfacing_boost",
+        extra={"memory_id": memory.id, "similarity": similarity},
+    )
 
     if similarity < 0.8:
         return 1.0

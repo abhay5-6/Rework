@@ -28,6 +28,11 @@ from app.services.collaborator_service import (
 
     get_collaborators
 )
+from app.schemas.common import (
+    CollaboratorRequestResponse,
+    CollaboratorResponse,
+    MessageOnlyResponse,
+)
 
 router = APIRouter(
 
@@ -37,7 +42,7 @@ router = APIRouter(
 )
 
 
-@router.post("/request/{user_id}")
+@router.post("/request/{user_id}", response_model=MessageOnlyResponse)
 async def send_request(
 
     user_id: int,
@@ -88,7 +93,7 @@ async def send_request(
     }
 
 
-@router.get("/requests")
+@router.get("/requests", response_model=list[CollaboratorRequestResponse])
 async def pending_requests(
 
     db: AsyncSession = Depends(
@@ -111,7 +116,8 @@ async def pending_requests(
 
 
 @router.post(
-    "/requests/{request_id}/accept"
+    "/requests/{request_id}/accept",
+    response_model=MessageOnlyResponse
 )
 async def accept_request(
 
@@ -150,7 +156,8 @@ async def accept_request(
 
 
 @router.post(
-    "/requests/{request_id}/reject"
+    "/requests/{request_id}/reject",
+    response_model=MessageOnlyResponse
 )
 async def reject_request(
 
@@ -188,7 +195,7 @@ async def reject_request(
     }
 
 
-@router.get("/")
+@router.get("/", response_model=list[CollaboratorResponse])
 async def list_collaborators(
 
     db: AsyncSession = Depends(

@@ -1,9 +1,13 @@
+from fastapi import Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.dependencies import get_current_user
+from app.db.session import get_db
 from app.models.membership import (
     RoomMembership
 )
+from app.models.user import User
 
 
 async def get_membership(
@@ -71,3 +75,31 @@ def can_manage_room(
     return is_room_admin(
         membership
     )
+
+
+async def require_room_owner(
+    room_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RoomMembership:
+    membership = await get_membership(db, room_id, current_user.id)
+    if not is_owner(membership):
+        raise HTTPException(
+            status_code=403,
+            detail="Only owner can perform this action",
+        )
+    return membership
+
+
+async def require_room_admin(
+    room_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RoomMembership:
+    membership = await get_membership(db, room_id, current_user.id)
+    if not is_admin(membership):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized",
+        )
+    return membership
