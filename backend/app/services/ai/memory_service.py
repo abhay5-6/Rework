@@ -75,7 +75,7 @@ async def get_stale_memories(db: AsyncSession, room_id: int, days_old: int = 30)
     Returns:
         A list of stale RoomMemory objects.
     """
-    threshold_date = datetime.now(timezone.utc) - timedelta(days=days_old)
+    threshold_date = (datetime.now(timezone.utc) - timedelta(days=days_old)).replace(tzinfo=None)
     memories = await memory_repo.get_stale_memories(db, room_id=room_id, threshold_date=threshold_date)
     logger.debug("Fetched stale memories", extra={"room_id": room_id, "count": len(memories)})
     return memories
