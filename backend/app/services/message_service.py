@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -6,14 +7,28 @@ from app.repositories.room_repository import room_repo
 from app.repositories.membership_repository import membership_repo
 from app.repositories.message_repository import message_repo
 
+logger = logging.getLogger(__name__)
+
 
 async def has_room_access(
     db: AsyncSession,
     room_id: int,
     user: User
-):
+) -> bool:
+    """
+    Checks if a user has access to a specific room.
+    
+    Args:
+        db: Database session.
+        room_id: ID of the room to check.
+        user: The user attempting to access the room.
+        
+    Returns:
+        True if the user has access (either public room or member of private room), False otherwise.
+    """
     room = await room_repo.get(db, id=room_id)
     if not room:
+        logger.warning("Room not found during access check", extra={"room_id": room_id, "user_id": user.id})
         return False
 
     # PUBLIC ROOM - allow access
@@ -22,6 +37,8 @@ async def has_room_access(
 
     # PRIVATE ROOM - check membership
     membership = await membership_repo.get_membership(db, room_id=room_id, user_id=user.id)
+    if not membership:
+        logger.info("Access denied: User is not a member of private room", extra={"room_id": room_id, "user_id": user.id})
     return membership is not None
 
 
@@ -31,6 +48,18 @@ async def send_message(
     user: User,
     message_data: MessageCreate
 ):
+    """
+    Sends a new message to a room via the REST API.
+    
+    Args:
+        db: Database session.
+        room_id: ID of the room to send the message to.
+        user: The user sending the message.
+        message_data: The message content and metadata.
+        
+    Returns:
+        The created Message object, or None if the user does not have access.
+    """
     allowed = await has_room_access(db, room_id, user)
     if not allowed:
         return None
@@ -44,6 +73,7 @@ async def send_message(
             "desk_id": getattr(message_data, 'desk_id', None)
         }
     )
+    logger.info("Message sent via REST", extra={"message_id": message.id, "room_id": room_id, "user_id": user.id})
     return message
 
 
@@ -54,6 +84,19 @@ async def get_room_messages(
     limit: int = 50,
     offset: int = 0
 ):
+    """
+    Retrieves a paginated list of messages for a room.
+    
+    Args:
+        db: Database session.
+        room_id: ID of the room.
+        user: The user requesting the messages.
+        limit: Maximum number of messages to return.
+        offset: Number of messages to skip.
+        
+    Returns:
+        A list of formatted message dictionaries, oldest first, or None if access is denied.
+    """
     allowed = await has_room_access(db, room_id, user)
     if not allowed:
         return None
@@ -79,6 +122,7 @@ async def get_room_messages(
     
     # Reverse to return oldest first if that's what the UI expects, since repo ordered desc for pagination
     formatted_messages.reverse()
+    logger.debug("Fetched room messages", extra={"room_id": room_id, "user_id": user.id, "count": len(formatted_messages)})
     return formatted_messages
 
 
@@ -90,9 +134,24 @@ async def create_realtime_message(
     extra_data: dict = None,
     desk_id: int | None = None
 ):
+    """
+    Creates a new message originating from a WebSocket connection or AI system.
+    
+    Args:
+        db: Database session.
+        room_id: ID of the room.
+        user: The user sending the message, or None if sent by the AI.
+        content: The text content of the message.
+        extra_data: Optional dictionary containing file attachments or AI metadata.
+        desk_id: Optional desk ID to scope the message.
+        
+    Returns:
+        The created Message object, or None if the user does not have access.
+    """
     if user is not None:
         allowed = await has_room_access(db, room_id, user)
         if not allowed:
+            logger.warning("WebSocket message creation denied", extra={"room_id": room_id, "user_id": user.id})
             return None
 
     message = await message_repo.create(
@@ -103,6 +162,16 @@ async def create_realtime_message(
             "room_id": room_id,
             "desk_id": desk_id,
             "extra_data": extra_data or {}
+        }
+    )
+    
+    logger.info(
+        "Realtime message created", 
+        extra={
+            "message_id": message.id, 
+            "room_id": room_id, 
+            "user_id": user.id if user else "AI",
+            "has_extra_data": bool(extra_data)
         }
     )
     return message

@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,17 +24,35 @@ from app.core.exceptions import (
     OrganizationMembershipRequiredException,
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def create_room(
     db: AsyncSession,
     room_data: RoomCreate,
     creator: User
-):
+) -> Room:
+    """
+    Creates a new room, assigns the creator as the owner, and auto-creates a default desk.
+    
+    Args:
+        db: Database session.
+        room_data: Schema containing room details (name, description, etc.).
+        creator: The user creating the room.
+        
+    Returns:
+        The newly created Room object.
+        
+    Raises:
+        OrganizationMembershipRequiredException: If organization_id is provided but the creator is not a member.
+        RoomAlreadyExistsException: If a room with the same name already exists in the same scope.
+    """
     if room_data.organization_id is not None:
         org_mem = await org_membership_repo.get_membership(
             db, org_id=room_data.organization_id, user_id=creator.id
         )
         if not org_mem:
+            logger.warning("Room creation failed: Not an org member", extra={"org_id": room_data.organization_id, "user_id": creator.id})
             raise OrganizationMembershipRequiredException()
 
     # Check for existing room
@@ -43,6 +62,7 @@ async def create_room(
         
     existing_room = await db.execute(query)
     if existing_room.scalar():
+        logger.warning("Room creation failed: Name collision", extra={"room_name": room_data.name})
         raise RoomAlreadyExistsException()
 
     room = await room_repo.create(
@@ -76,7 +96,8 @@ async def create_room(
 
     await db.commit()
     await db.refresh(room)
-
+    
+    logger.info("Room created successfully", extra={"room_id": room.id, "room_name": room.name, "owner_id": creator.id})
     return room
 
 
@@ -87,6 +108,19 @@ async def get_rooms(
     skip: int = 0,
     limit: int = 10
 ):
+    """
+    Retrieves a paginated list of rooms visible to the current user.
+    
+    Args:
+        db: Database session.
+        current_user: The user requesting the list.
+        organization_id: Optional org ID to filter rooms by organization.
+        skip: Pagination offset.
+        limit: Pagination limit.
+        
+    Returns:
+        A dictionary containing the 'items' (list of room dicts) and 'total' count.
+    """
     if organization_id is not None:
         org_mem = await org_membership_repo.get_membership(
             db, org_id=organization_id, user_id=current_user.id
@@ -129,6 +163,7 @@ async def get_rooms(
             "has_pending_request": pending_request is not None,
         })
 
+    logger.debug("Fetched room list", extra={"user_id": current_user.id, "count": len(room_list)})
     return {
         "items": room_list,
         "total": total_rooms
@@ -140,6 +175,17 @@ async def get_room_by_id(
     room_id: int,
     current_user: User
 ):
+    """
+    Retrieves detailed information for a specific room.
+    
+    Args:
+        db: Database session.
+        room_id: The ID of the room.
+        current_user: The user requesting the room details.
+        
+    Returns:
+        A dictionary containing room details and the user's membership status, or None if not found.
+    """
     room = await room_repo.get(db, id=room_id)
     if not room:
         return None
@@ -163,6 +209,22 @@ async def join_room(
     room_id: int,
     user: User
 ):
+    """
+    Allows a user to join a room. For public rooms, they join immediately.
+    For private rooms, a join request is created instead.
+    
+    Args:
+        db: Database session.
+        room_id: The ID of the room to join.
+        user: The user attempting to join.
+        
+    Returns:
+        'joined' if joined immediately, or the JoinRequest object if a request was created.
+        
+    Raises:
+        RoomNotFoundException: If the room does not exist.
+        RoomAlreadyJoinedException: If the user is already a member.
+    """
     room = await room_repo.get(db, id=room_id)
     if not room:
         raise RoomNotFoundException()
@@ -181,9 +243,11 @@ async def join_room(
                 "role": "member"
             }
         )
+        logger.info("User joined public room", extra={"room_id": room_id, "user_id": user.id})
         return "joined"
 
     # PRIVATE ROOM
+    logger.info("User requested to join private room", extra={"room_id": room_id, "user_id": user.id})
     return await create_join_request(
         db=db,
         room_id=room_id,
@@ -196,6 +260,19 @@ async def leave_room(
     room_id: int,
     user: User
 ):
+    """
+    Allows a user to leave a room.
+    
+    Args:
+        db: Database session.
+        room_id: The ID of the room to leave.
+        user: The user attempting to leave.
+        
+    Raises:
+        RoomNotFoundException: If the room does not exist.
+        RoomMembershipRequiredException: If the user is not a member.
+        RoomOwnerCannotLeaveException: If the user is the owner of the room.
+    """
     room = await room_repo.get(db, id=room_id)
     if not room:
         raise RoomNotFoundException()
@@ -205,9 +282,11 @@ async def leave_room(
         raise RoomMembershipRequiredException()
 
     if membership.role == "owner":
+        logger.warning("Owner attempted to leave room", extra={"room_id": room_id, "user_id": user.id})
         raise RoomOwnerCannotLeaveException()
 
     await membership_repo.remove(db, id=membership.id)
+    logger.info("User left room", extra={"room_id": room_id, "user_id": user.id})
     return "left"
 
 
@@ -216,11 +295,25 @@ async def delete_room(
     room_id: int,
     user: User
 ):
+    """
+    Deletes a room and all its associated messages and memberships.
+    Only the owner of the room can perform this action.
+    
+    Args:
+        db: Database session.
+        room_id: The ID of the room to delete.
+        user: The user requesting the deletion (must be owner).
+        
+    Raises:
+        RoomNotFoundException: If the room does not exist.
+        RoomOwnerRequiredException: If the user is not the owner.
+    """
     room = await room_repo.get(db, id=room_id)
     if not room:
         raise RoomNotFoundException()
 
     if room.owner_id != user.id:
+        logger.warning("Non-owner attempted to delete room", extra={"room_id": room_id, "user_id": user.id})
         raise RoomOwnerRequiredException("Only owner can delete room")
 
     memberships = await membership_repo.get_room_members(db, room_id=room_id)
@@ -237,6 +330,7 @@ async def delete_room(
 
     await room_repo.remove(db, id=room.id)
     await db.commit()
+    logger.info("Room deleted", extra={"room_id": room_id, "user_id": user.id, "messages_deleted": len(messages)})
     return "deleted"
 
 
@@ -246,11 +340,26 @@ async def toggle_room_ai(
     ai_enabled: bool,
     user: User
 ):
+    """
+    Toggles the AI capability on or off for a room.
+    Only the owner of the room can perform this action.
+    
+    Args:
+        db: Database session.
+        room_id: The ID of the room.
+        ai_enabled: The desired AI state.
+        user: The user requesting the toggle (must be owner).
+        
+    Raises:
+        RoomNotFoundException: If the room does not exist.
+        RoomOwnerRequiredException: If the user is not the owner.
+    """
     room = await room_repo.get(db, id=room_id)
     if not room:
         raise RoomNotFoundException()
 
     if room.owner_id != user.id:
+        logger.warning("Non-owner attempted to toggle AI", extra={"room_id": room_id, "user_id": user.id})
         raise RoomOwnerRequiredException("Only owner can update room")
 
     # Using update instead of directly modifying to exercise the repository
@@ -259,4 +368,5 @@ async def toggle_room_ai(
         db_obj=room,
         obj_in={"ai_enabled": ai_enabled}
     )
+    logger.info("Room AI toggled", extra={"room_id": room_id, "ai_enabled": ai_enabled, "user_id": user.id})
     return "updated"
