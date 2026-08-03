@@ -4,8 +4,8 @@ from app.models.memory_edge import (
     MemoryEdge
 )
 
-from app.models.room_memory import (
-    RoomMemory
+from app.models.workspace_memory import (
+    WorkspaceMemory
 )
 
 
@@ -39,10 +39,10 @@ async def apply_contradictions(
 
         memory_result = await db.execute(
 
-            select(RoomMemory)
+            select(WorkspaceMemory)
 
             .where(
-                RoomMemory.id
+                WorkspaceMemory.id
                 == edge.target_memory_id
             )
         )

@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.exceptions import HTTPException
-from app.routes.rooms import router as rooms_router
+from app.routes.workspaces import router as rooms_router
 from app.routes.messages import router as messages_router
 from app.websocket.chat import router as websocket_router
 from contextlib import asynccontextmanager
@@ -28,8 +28,8 @@ from app.core.exceptions import (
 from app.core.logging_config import configure_logging
 from app.core.rate_limit import limiter
 from app.routes import collaborators, files
-from app.models.room_memory import RoomMemory
-from app.models.room_task import RoomTask
+from app.models.workspace_memory import WorkspaceMemory
+from app.models.workspace_task import WorkspaceTask
 from app.routes.memories import router as memories_router
 from app.routes.ai_summary import router as ai_summary_router
 from app.routes.ai_graph import router as ai_graph_router
@@ -127,7 +127,7 @@ async def request_context_middleware(
     return response
 from app.routes.tasks import router as tasks_router
 from app.routes.organization import router as org_router
-from app.routes.desk import router as desk_router
+from app.routes.channel import router as channel_router
 
 app.include_router(auth_router)
 app.include_router(rooms_router)
@@ -142,7 +142,7 @@ app.include_router(
 app.include_router(files.router)
 app.include_router(tasks_router)
 app.include_router(org_router, prefix="/orgs", tags=["Organizations"])
-app.include_router(desk_router, prefix="/desks", tags=["Desks"])
+app.include_router(channel_router, prefix="/channels", tags=["Channels"])
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

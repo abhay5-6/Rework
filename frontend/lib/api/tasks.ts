@@ -9,12 +9,12 @@ export interface Task {
   completed_at: string | null;
 }
 
-export async function getRoomTasks(roomId: number): Promise<Task[]> {
-  const response = await api.get(`/rooms/${roomId}/tasks`);
+export async function getWorkspaceTasks(roomId: number): Promise<Task[]> {
+  const response = await api.get(`/workspaces/${roomId}/tasks`);
   return response.data;
 }
 
 export async function updateTask(roomId: number, taskId: number, updates: Partial<Pick<Task, "status" | "completed_at">> & { completed?: boolean }): Promise<Task> {
-  const response = await api.patch(`/rooms/${roomId}/tasks/${taskId}`, updates);
+  const response = await api.patch(`/workspaces/${roomId}/tasks/${taskId}`, updates);
   return response.data;
 }

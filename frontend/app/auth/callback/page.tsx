@@ -19,7 +19,7 @@ export default function AuthCallbackPage() {
     if (token) {
       auth.login(token);
       toast.success("Identity verified");
-      router.replace("/rooms");
+      router.replace("/workspaces");
       return;
     }
 

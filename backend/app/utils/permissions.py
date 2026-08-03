@@ -5,25 +5,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.membership import (
-    RoomMembership
+    WorkspaceMembership
 )
 from app.models.user import User
 
 
 async def get_membership(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     user_id: int
 ):
 
     result = await db.execute(
 
-        select(RoomMembership)
+        select(WorkspaceMembership)
         .where(
-            RoomMembership.room_id
-                == room_id,
+            WorkspaceMembership.workspace_id
+                == workspace_id,
 
-            RoomMembership.user_id
+            WorkspaceMembership.user_id
                 == user_id
         )
     )
@@ -32,26 +32,26 @@ async def get_membership(
 
 
 def is_owner(
-    membership: RoomMembership | None
+    membership: WorkspaceMembership | None
 ) -> bool:
-    """Check if user is room owner"""
+    """Check if user is workspace owner"""
     return (
         membership is not None
         and membership.role == "owner"
     )
 
 
-def is_room_owner(
-    membership: RoomMembership | None
+def is_workspace_owner(
+    membership: WorkspaceMembership | None
 ):
     """Alias for is_owner - for backward compatibility"""
     return is_owner(membership)
 
 
 def is_admin(
-    membership: RoomMembership | None
+    membership: WorkspaceMembership | None
 ) -> bool:
-    """Check if user is room admin or owner"""
+    """Check if user is workspace admin or owner"""
     return (
         membership is not None
         and membership.role in [
@@ -61,28 +61,28 @@ def is_admin(
     )
 
 
-def is_room_admin(
-    membership: RoomMembership | None
+def is_workspace_admin(
+    membership: WorkspaceMembership | None
 ):
     """Alias for is_admin - for backward compatibility"""
     return is_admin(membership)
 
 
-def can_manage_room(
-    membership: RoomMembership | None
+def can_manage_workspace(
+    membership: WorkspaceMembership | None
 ):
 
-    return is_room_admin(
+    return is_workspace_admin(
         membership
     )
 
 
-async def require_room_owner(
-    room_id: int,
+async def require_workspace_owner(
+    workspace_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> RoomMembership:
-    membership = await get_membership(db, room_id, current_user.id)
+) -> WorkspaceMembership:
+    membership = await get_membership(db, workspace_id, current_user.id)
     if not is_owner(membership):
         raise HTTPException(
             status_code=403,
@@ -91,12 +91,12 @@ async def require_room_owner(
     return membership
 
 
-async def require_room_admin(
-    room_id: int,
+async def require_workspace_admin(
+    workspace_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> RoomMembership:
-    membership = await get_membership(db, room_id, current_user.id)
+) -> WorkspaceMembership:
+    membership = await get_membership(db, workspace_id, current_user.id)
     if not is_admin(membership):
         raise HTTPException(
             status_code=403,

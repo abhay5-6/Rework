@@ -10,7 +10,7 @@ export interface SearchResult {
   }>;
   memories: Array<{
     id: number;
-    room_id: number;
+    workspace_id: number;
     created_by: number;
     content: string;
     memory_type: string;
@@ -23,7 +23,7 @@ export async function searchRoom(
   query: string
 ): Promise<SearchResult> {
   const response = await api.get(
-    `/rooms/${roomId}/search`,
+    `/workspaces/${roomId}/search`,
     {
       params: { query }
     }
@@ -49,7 +49,7 @@ export async function queryRoom(
   query: string
 ): Promise<{ answer: string }> {
   const response = await api.get(
-    `/rooms/${roomId}/ai`,
+    `/workspaces/${roomId}/ai`,
     {
       params: { query }
     }

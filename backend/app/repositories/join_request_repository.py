@@ -7,32 +7,32 @@ from app.repositories.base import BaseRepository
 
 
 class JoinRequestRepository(BaseRepository[RoomJoinRequest, Dict[str, Any], Dict[str, Any]]):
-    async def get_join_request(self, db: AsyncSession, *, room_id: int, user_id: int) -> Optional[RoomJoinRequest]:
+    async def get_join_request(self, db: AsyncSession, *, workspace_id: int, user_id: int) -> Optional[RoomJoinRequest]:
         query = select(RoomJoinRequest).where(
-            RoomJoinRequest.room_id == room_id,
+            RoomJoinRequest.workspace_id == workspace_id,
             RoomJoinRequest.user_id == user_id,
             RoomJoinRequest.status == "pending"
         )
         result = await db.execute(query)
         return result.scalars().first()
 
-    async def get_room_requests(self, db: AsyncSession, *, room_id: int) -> List[RoomJoinRequest]:
+    async def get_workspace_requests(self, db: AsyncSession, *, workspace_id: int) -> List[RoomJoinRequest]:
         query = select(RoomJoinRequest).where(
-            RoomJoinRequest.room_id == room_id,
+            RoomJoinRequest.workspace_id == workspace_id,
             RoomJoinRequest.status == "pending"
         )
         result = await db.execute(query)
         return list(result.scalars().all())
 
-    async def get_pending_requests_with_details(self, db: AsyncSession, *, owned_room_ids: List[int]):
-        from app.models.room import Room
+    async def get_pending_requests_with_details(self, db: AsyncSession, *, owned_workspace_ids: List[int]):
+        from app.models.workspace import Workspace
         from app.models.user import User
         query = (
-            select(RoomJoinRequest, Room, User)
-            .join(Room, RoomJoinRequest.room_id == Room.id)
+            select(RoomJoinRequest, Workspace, User)
+            .join(Workspace, RoomJoinRequest.workspace_id == Workspace.id)
             .join(User, RoomJoinRequest.user_id == User.id)
             .where(
-                RoomJoinRequest.room_id.in_(owned_room_ids),
+                RoomJoinRequest.workspace_id.in_(owned_workspace_ids),
                 RoomJoinRequest.status == "pending"
             )
         )

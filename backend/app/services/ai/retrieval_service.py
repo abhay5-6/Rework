@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession
 )
 
-from app.models.room_memory import (
-    RoomMemory
+from app.models.workspace_memory import (
+    WorkspaceMemory
 )
 
 from app.services.ai.embedding_service import (
@@ -68,11 +68,11 @@ def calculate_recency_weight(
     return 0.2
 
 
-async def search_room_memories(
+async def search_workspace_memories(
 
     db: AsyncSession,
 
-    room_id: int,
+    workspace_id: int,
 
     query: str,
 
@@ -80,7 +80,7 @@ async def search_room_memories(
 ):
     logger.debug(
         "search_started",
-        extra={"room_id": room_id, "query": query},
+        extra={"workspace_id": workspace_id, "query": query},
     )
 
     query_embedding = await generate_embedding(query)
@@ -91,7 +91,7 @@ async def search_room_memories(
 
     similarity_expr = (
         1 -
-        RoomMemory.embedding.cosine_distance(
+        WorkspaceMemory.embedding.cosine_distance(
             query_embedding
         )
     ).label(
@@ -101,17 +101,17 @@ async def search_room_memories(
     stmt = (
 
         select(
-            RoomMemory,
+            WorkspaceMemory,
             similarity_expr
         )
 
         .where(
-            RoomMemory.room_id
-            == room_id
+            WorkspaceMemory.workspace_id
+            == workspace_id
         )
 
         .order_by(
-            RoomMemory.embedding.cosine_distance(
+            WorkspaceMemory.embedding.cosine_distance(
                 query_embedding
             )
         )
@@ -129,7 +129,7 @@ async def search_room_memories(
 
     logger.debug(
         "raw_results_found",
-        extra={"count": len(rows), "room_id": room_id},
+        extra={"count": len(rows), "workspace_id": workspace_id},
     )
 
     scored_memories = []
@@ -260,7 +260,7 @@ async def search_room_memories(
 
     logger.debug(
         "search_complete",
-        extra={"returned": len(top_memories), "scored": len(scored_memories), "room_id": room_id},
+        extra={"returned": len(top_memories), "scored": len(scored_memories), "workspace_id": workspace_id},
     )
 
     for memory in top_memories:

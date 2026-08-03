@@ -43,7 +43,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (auth.isAuthenticated) {
-      router.push("/rooms");
+      router.push("/workspaces");
     }
   }, [auth.isAuthenticated, router]);
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
       const data = await login(email, password);
       auth.login(data.access_token);
       toast.success("Welcome back");
-      router.push("/rooms");
+      router.push("/workspaces");
     } catch (error) {
       console.error(error);
       toast.error("Login failed. Check your credentials.");
@@ -90,8 +90,8 @@ export default function LoginPage() {
               Rework remembers the work, not just the messages.
             </h1>
             <p className="mt-5 text-lg text-muted-foreground">
-              Sign in to return to shared rooms, channel chat, task boards,
-              calls, files, and the room memory assistant.
+              Sign in to return to shared workspaces, channel chat, task boards,
+              calls, files, and the workspace memory assistant.
             </p>
           </div>
         </section>

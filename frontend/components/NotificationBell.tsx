@@ -42,11 +42,11 @@ export default function NotificationBell() {
             </div>
           ) : (
             <div className="max-h-[500px] overflow-y-auto">
-              {/* ROOM REQUESTS */}
+              {/* WORKSPACE REQUESTS */}
               {roomRequests.length > 0 && (
                 <div className="border-b border-border">
                   <div className="px-4 py-3 text-sm font-semibold text-muted-foreground uppercase">
-                    Room Requests
+                    Workspace Requests
                   </div>
                   {roomRequests.map((request) => (
                     <div
@@ -59,7 +59,7 @@ export default function NotificationBell() {
                         </span>{" "}
                         requested access to{" "}
                         <span className="font-semibold text-foreground">
-                          {request.room_name}
+                          {request.workspace_name}
                         </span>
                       </div>
                       <div className="flex gap-2">

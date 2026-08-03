@@ -6,25 +6,25 @@ from sqlalchemy import select
 
 from app.db.session import get_db
 from app.models.user import User
-from app.models.room_task import RoomTask
+from app.models.workspace_task import WorkspaceTask
 from app.core.dependencies import get_current_user
-from app.services.message_service import has_room_access
+from app.services.message_service import has_workspace_access
 from app.websocket.manager import manager
-from app.schemas.common import RoomTaskResponse
+from app.schemas.common import WorkspaceTaskResponse
 
-router = APIRouter(prefix="/rooms", tags=["Tasks"])
+router = APIRouter(prefix="/workspaces", tags=["Tasks"])
 
-@router.get("/{room_id}/tasks", response_model=list[RoomTaskResponse])
-async def get_room_tasks(
-    room_id: int,
+@router.get("/{workspace_id}/tasks", response_model=list[WorkspaceTaskResponse])
+async def get_workspace_tasks(
+    workspace_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> List[Dict[str, Any]]:
-    allowed = await has_room_access(db, room_id, current_user)
+    allowed = await has_workspace_access(db, workspace_id, current_user)
     if not allowed:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query = select(RoomTask).where(RoomTask.room_id == room_id).order_by(RoomTask.created_at.desc())
+    query = select(WorkspaceTask).where(WorkspaceTask.workspace_id == workspace_id).order_by(WorkspaceTask.created_at.desc())
     result = await db.execute(query)
     tasks = result.scalars().all()
     
@@ -40,19 +40,19 @@ async def get_room_tasks(
         for t in tasks
     ]
 
-@router.patch("/{room_id}/tasks/{task_id}", response_model=RoomTaskResponse)
-async def update_room_task(
-    room_id: int,
+@router.patch("/{workspace_id}/tasks/{task_id}", response_model=WorkspaceTaskResponse)
+async def update_workspace_task(
+    workspace_id: int,
     task_id: int,
     payload: Dict[str, Any],
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
-    allowed = await has_room_access(db, room_id, current_user)
+    allowed = await has_workspace_access(db, workspace_id, current_user)
     if not allowed:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    query = select(RoomTask).where(RoomTask.id == task_id, RoomTask.room_id == room_id)
+    query = select(WorkspaceTask).where(WorkspaceTask.id == task_id, WorkspaceTask.workspace_id == workspace_id)
     result = await db.execute(query)
     task = result.scalars().first()
     
@@ -79,7 +79,7 @@ async def update_room_task(
     }
     
     await manager.broadcast(
-        room_id,
+        workspace_id,
         {
             "type": "task_updated",
             "data": {

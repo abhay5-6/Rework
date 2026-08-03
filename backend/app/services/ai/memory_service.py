@@ -8,9 +8,9 @@ from app.repositories.memory_repository import memory_repo
 logger = logging.getLogger(__name__)
 
 
-async def create_room_memory(
+async def create_workspace_memory(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     created_by: int,
     content: str,
     embedding: list[float],
@@ -22,11 +22,11 @@ async def create_room_memory(
     domain: str = "general",
 ):
     """
-    Creates a new memory for a room with associated embeddings and metadata.
+    Creates a new memory for a workspace with associated embeddings and metadata.
     
     Args:
         db: Database session.
-        room_id: ID of the room.
+        workspace_id: ID of the workspace.
         created_by: ID of the user or AI creating the memory.
         content: The text content to store.
         embedding: Vector embedding of the content.
@@ -38,7 +38,7 @@ async def create_room_memory(
         domain: Semantic domain of the memory.
         
     Returns:
-        The newly created RoomMemory object.
+        The newly created WorkspaceMemory object.
     """
     if tags is None:
         tags = []
@@ -46,7 +46,7 @@ async def create_room_memory(
     memory = await memory_repo.create(
         db,
         obj_in={
-            "room_id": room_id,
+            "workspace_id": workspace_id,
             "created_by": created_by,
             "content": content,
             "memory_type": memory_type,
@@ -59,51 +59,51 @@ async def create_room_memory(
             "domain": domain,
         }
     )
-    logger.info("Room memory created", extra={"memory_id": memory.id, "room_id": room_id, "created_by": created_by, "domain": domain})
+    logger.info("Workspace memory created", extra={"memory_id": memory.id, "workspace_id": workspace_id, "created_by": created_by, "domain": domain})
     return memory
 
 
-async def get_stale_memories(db: AsyncSession, room_id: int, days_old: int = 30):
+async def get_stale_memories(db: AsyncSession, workspace_id: int, days_old: int = 30):
     """
     Retrieves memories that have not been reinforced within a certain timeframe.
     
     Args:
         db: Database session.
-        room_id: ID of the room.
+        workspace_id: ID of the workspace.
         days_old: Threshold in days to consider a memory stale.
         
     Returns:
-        A list of stale RoomMemory objects.
+        A list of stale WorkspaceMemory objects.
     """
     threshold_date = (datetime.now(timezone.utc) - timedelta(days=days_old)).replace(tzinfo=None)
-    memories = await memory_repo.get_stale_memories(db, room_id=room_id, threshold_date=threshold_date)
-    logger.debug("Fetched stale memories", extra={"room_id": room_id, "count": len(memories)})
+    memories = await memory_repo.get_stale_memories(db, workspace_id=workspace_id, threshold_date=threshold_date)
+    logger.debug("Fetched stale memories", extra={"workspace_id": workspace_id, "count": len(memories)})
     return memories
 
 
-async def get_room_memories(
+async def get_workspace_memories(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     limit: int = 20
 ):
     """
-    Retrieves the most relevant memories for a room, including creator usernames.
+    Retrieves the most relevant memories for a workspace, including creator usernames.
     
     Args:
         db: Database session.
-        room_id: ID of the room.
+        workspace_id: ID of the workspace.
         limit: Maximum number of memories to fetch.
         
     Returns:
         A list of formatted dictionary representations of memories.
     """
-    result = await memory_repo.get_memories_for_room_with_users(db, room_id=room_id, limit=limit)
+    result = await memory_repo.get_memories_for_workspace_with_users(db, workspace_id=workspace_id, limit=limit)
 
     memories = []
     for memory, creator_username in result:
         memories.append({
             "id": memory.id,
-            "room_id": memory.room_id,
+            "workspace_id": memory.workspace_id,
             "created_by": memory.created_by,
             "content": memory.content,
             "memory_type": memory.memory_type,
@@ -117,13 +117,13 @@ async def get_room_memories(
             "last_reinforced_at": memory.last_reinforced_at,
             "creator_username": creator_username,
         })
-    logger.debug("Fetched room memories", extra={"room_id": room_id, "count": len(memories)})
+    logger.debug("Fetched workspace memories", extra={"workspace_id": workspace_id, "count": len(memories)})
     return memories
 
 
 async def reinforce_memory(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     memory_id: int
 ):
     """
@@ -131,26 +131,26 @@ async def reinforce_memory(
     
     Args:
         db: Database session.
-        room_id: ID of the room containing the memory.
+        workspace_id: ID of the workspace containing the memory.
         memory_id: ID of the memory to reinforce.
         
     Returns:
         The updated memory object, or None if not found.
     """
-    memory = await memory_repo.get_memory_in_room(db, room_id=room_id, memory_id=memory_id)
+    memory = await memory_repo.get_memory_in_workspace(db, workspace_id=workspace_id, memory_id=memory_id)
     if memory:
         memory.last_reinforced_at = datetime.now(timezone.utc)
         memory.confidence_score = min(1.0, memory.confidence_score + 0.2)
         await db.commit()
-        logger.info("Memory reinforced", extra={"memory_id": memory_id, "room_id": room_id, "new_score": memory.confidence_score})
+        logger.info("Memory reinforced", extra={"memory_id": memory_id, "workspace_id": workspace_id, "new_score": memory.confidence_score})
     else:
-        logger.warning("Attempted to reinforce non-existent memory", extra={"memory_id": memory_id, "room_id": room_id})
+        logger.warning("Attempted to reinforce non-existent memory", extra={"memory_id": memory_id, "workspace_id": workspace_id})
     return memory
 
 
 async def update_memory(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     memory_id: int,
     content: str | None = None,
     embedding: list[float] | None = None,
@@ -162,7 +162,7 @@ async def update_memory(
     
     Args:
         db: Database session.
-        room_id: ID of the room.
+        workspace_id: ID of the workspace.
         memory_id: ID of the memory.
         content: New content (if any).
         embedding: New vector embedding (if any).
@@ -172,9 +172,9 @@ async def update_memory(
     Returns:
         The updated memory object, or None if not found.
     """
-    memory = await memory_repo.get_memory_in_room(db, room_id=room_id, memory_id=memory_id)
+    memory = await memory_repo.get_memory_in_workspace(db, workspace_id=workspace_id, memory_id=memory_id)
     if not memory:
-        logger.warning("Attempted to update non-existent memory", extra={"memory_id": memory_id, "room_id": room_id})
+        logger.warning("Attempted to update non-existent memory", extra={"memory_id": memory_id, "workspace_id": workspace_id})
         return None
 
     if content is not None:
@@ -190,30 +190,30 @@ async def update_memory(
 
     await db.flush()
     await db.refresh(memory)
-    logger.info("Memory updated", extra={"memory_id": memory_id, "room_id": room_id})
+    logger.info("Memory updated", extra={"memory_id": memory_id, "workspace_id": workspace_id})
     return memory
 
 
 async def delete_memory(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     memory_id: int
 ):
     """
-    Deletes a specific memory from a room.
+    Deletes a specific memory from a workspace.
     
     Args:
         db: Database session.
-        room_id: ID of the room.
+        workspace_id: ID of the workspace.
         memory_id: ID of the memory to delete.
         
     Returns:
         True if successfully deleted, False if the memory was not found.
     """
-    memory = await memory_repo.get_memory_in_room(db, room_id=room_id, memory_id=memory_id)
+    memory = await memory_repo.get_memory_in_workspace(db, workspace_id=workspace_id, memory_id=memory_id)
     if memory:
         await memory_repo.remove(db, id=memory.id)
-        logger.info("Memory deleted", extra={"memory_id": memory_id, "room_id": room_id})
+        logger.info("Memory deleted", extra={"memory_id": memory_id, "workspace_id": workspace_id})
         return True
-    logger.warning("Attempted to delete non-existent memory", extra={"memory_id": memory_id, "room_id": room_id})
+    logger.warning("Attempted to delete non-existent memory", extra={"memory_id": memory_id, "workspace_id": workspace_id})
     return False

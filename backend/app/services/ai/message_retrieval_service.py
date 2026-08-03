@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 async def search_messages(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     query: str,
     top_k: int = 10,
 ):
@@ -22,7 +22,7 @@ async def search_messages(
     logger.info(
         "message_search_started",
         extra={
-            "room_id": room_id,
+            "workspace_id": workspace_id,
             "query": query,
         },
     )
@@ -46,7 +46,7 @@ async def search_messages(
             similarity_expr
         )
         .where(
-            Message.room_id == room_id
+            Message.workspace_id == workspace_id
         )
         .where(
             Message.embedding.is_not(
@@ -99,7 +99,7 @@ async def search_messages(
     logger.info(
         "message_search_finished",
         extra={
-            "room_id": room_id,
+            "workspace_id": workspace_id,
             "results": len(
                 messages
             ),

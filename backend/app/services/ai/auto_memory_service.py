@@ -14,7 +14,7 @@ from app.services.ai.memory_extractor import (
 )
 
 from app.services.ai.memory_service import (
-    create_room_memory
+    create_workspace_memory
 )
 
 from app.services.ai.memory_dedup_service import (
@@ -25,9 +25,9 @@ from app.services.ai.memory_graph_service import (
     build_memory_relationships
 )
 
-from app.models.room_memory import RoomMemory
+from app.models.workspace_memory import WorkspaceMemory
 from app.models.memory_edge import MemoryEdge
-from app.models.room_task import RoomTask
+from app.models.workspace_task import WorkspaceTask
 from app.websocket.manager import manager
 
 from app.core.config import (
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 async def process_message_for_memory(
     db,
-    room_id: int,
+    workspace_id: int,
     user_id: int,
     message_id: int,
     message_content: str,
@@ -50,7 +50,7 @@ async def process_message_for_memory(
     logger.info(
         "message_ingestion_started",
         extra={
-            "room_id": room_id,
+            "workspace_id": workspace_id,
             "user_id": user_id,
             "message_id": message_id,
         },
@@ -161,7 +161,7 @@ async def process_message_for_memory(
 
     similar_memory = await find_similar_memory(
         db=db,
-        room_id=room_id,
+        workspace_id=workspace_id,
         embedding=embedding,
     )
 
@@ -185,7 +185,7 @@ async def process_message_for_memory(
         logger.info(
             "memory_reinforced",
             extra={
-                "room_id": room_id,
+                "workspace_id": workspace_id,
                 "memory_id": similar_memory.id,
                 "message_id": message_id,
             },
@@ -199,9 +199,9 @@ async def process_message_for_memory(
 
     # STEP 5 - Create new memory
 
-    memory = await create_room_memory(
+    memory = await create_workspace_memory(
         db=db,
-        room_id=room_id,
+        workspace_id=workspace_id,
         created_by=user_id,
         content=content,
         memory_type=result.get(
@@ -224,12 +224,12 @@ async def process_message_for_memory(
 
     logger.debug(
         "new_memory_created",
-        extra={"memory_id": memory.id, "room_id": room_id},
+        extra={"memory_id": memory.id, "workspace_id": workspace_id},
     )
 
     if memory.memory_type == "task":
-        task = RoomTask(
-            room_id=room_id,
+        task = WorkspaceTask(
+            workspace_id=workspace_id,
             description=content,
             assignee_username=result.get("assignee")
         )
@@ -237,12 +237,12 @@ async def process_message_for_memory(
         await db.flush()
         logger.debug(
             "task_extracted_from_memory",
-            extra={"task_id": task.id, "room_id": room_id},
+            extra={"task_id": task.id, "workspace_id": workspace_id},
         )
         
-        # Broadcast the new task to the room
+        # Broadcast the new task to the workspace
         await manager.broadcast(
-            room_id,
+            workspace_id,
             {
                 "type": "task_created",
                 "data": {
@@ -266,7 +266,7 @@ async def process_message_for_memory(
     logger.info(
         "memory_created",
         extra={
-            "room_id": room_id,
+            "workspace_id": workspace_id,
             "memory_id": memory.id,
             "message_id": message_id,
         },
@@ -274,13 +274,13 @@ async def process_message_for_memory(
 
     logger.debug(
         "graph_relationships_built",
-        extra={"memory_id": memory.id, "room_id": room_id},
+        extra={"memory_id": memory.id, "workspace_id": workspace_id},
     )
 
     return memory
 
 async def process_memory_background(
-    room_id: int,
+    workspace_id: int,
     user_id: int,
     message_id: int,
     content: str,
@@ -288,7 +288,7 @@ async def process_memory_background(
 ):
     logger.debug(
         "background_memory_task_started",
-        extra={"room_id": room_id, "user_id": user_id, "message_id": message_id},
+        extra={"workspace_id": workspace_id, "user_id": user_id, "message_id": message_id},
     )
 
     async with AsyncSessionLocal() as db:
@@ -299,7 +299,7 @@ async def process_memory_background(
 
                 await process_message_for_memory(
                     db=db,
-                    room_id=room_id,
+                    workspace_id=workspace_id,
                     user_id=user_id,
                     message_id=message_id,
                     message_content=content,
@@ -308,20 +308,20 @@ async def process_memory_background(
 
             logger.debug(
                 "background_memory_task_completed",
-                extra={"room_id": room_id, "message_id": message_id},
+                extra={"workspace_id": workspace_id, "message_id": message_id},
             )
 
         except Exception as e:
 
             logger.error(
                 "background_memory_task_failed",
-                extra={"room_id": room_id, "error": str(e)},
+                extra={"workspace_id": workspace_id, "error": str(e)},
             )
 
             logger.exception(
                 "background_memory_processing_failed",
                 extra={
-                    "room_id": room_id,
+                    "workspace_id": workspace_id,
                     "user_id": user_id,
                     "message_id": message_id,
                 },

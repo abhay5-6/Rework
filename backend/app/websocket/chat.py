@@ -26,7 +26,7 @@ from app.db.session import (
 )
 
 from sqlalchemy import select
-from app.models.room import Room
+from app.models.workspace import Workspace
 
 from app.services.message_service import (
     create_realtime_message
@@ -37,7 +37,7 @@ from app.services.ai.auto_memory_service import (
 )
 
 from app.services.ai.ai_client import (
-    generate_room_answer,
+    generate_workspace_answer,
     generate_web_search_answer
 )
 
@@ -54,11 +54,11 @@ def sanitize_message(text: str) -> str:
 
 
 def is_rate_limited(
-    room_id: int,
+    workspace_id: int,
     user_id: int
 ) -> bool:
     now = time.time()
-    user_key = f"{room_id}:{user_id}"
+    user_key = f"{workspace_id}:{user_id}"
     window_seconds = (
         settings.websocket_rate_limit_window_seconds
     )
@@ -97,10 +97,10 @@ async def send_error(
     )
 
 
-@router.websocket("/ws/{room_id}")
+@router.websocket("/ws/{workspace_id}")
 async def websocket_chat(
     websocket: WebSocket,
-    room_id: int
+    workspace_id: int
 ):
     origin = websocket.headers.get("origin")
 
@@ -110,7 +110,7 @@ async def websocket_chat(
             logger.warning(
                 "websocket_origin_rejected",
                 extra={
-                    "room_id": room_id,
+                    "workspace_id": workspace_id,
                     "origin": origin
                 }
             )
@@ -133,7 +133,7 @@ async def websocket_chat(
 
         user = await authenticate_websocket(
             token,
-            room_id,
+            workspace_id,
             db
         )
 
@@ -146,20 +146,20 @@ async def websocket_chat(
             return
 
         await manager.connect(
-            room_id,
+            workspace_id,
             user.username,
             websocket
         )
 
         # User joined
         await manager.broadcast(
-            room_id,
+            workspace_id,
             {
                 "type": "online_users",
                 "data": {
                     "users":
                         manager.get_online_users(
-                            room_id
+                            workspace_id
                         )
                 }
             }
@@ -221,7 +221,7 @@ async def websocket_chat(
                 if event_type == "typing":
 
                     await manager.broadcast(
-                        room_id,
+                        workspace_id,
                         {
                             "type": "typing",
                             "data": {
@@ -246,12 +246,12 @@ async def websocket_chat(
                     logger.info("WebRTC Signaling Received", extra={
                         "event_type": event_type,
                         "sender": user.username,
-                        "room_id": room_id
+                        "workspace_id": workspace_id
                     })
                     
-                    # Broadcast the signaling message to everyone else in the room
+                    # Broadcast the signaling message to everyone else in the workspace
                     await manager.broadcast(
-                        room_id,
+                        workspace_id,
                         {
                             "type": event_type,
                             "data": {
@@ -267,7 +267,7 @@ async def websocket_chat(
 
                     content = data.get("message")
                     extra_data = data.get("extra_data", {})
-                    desk_id = data.get("desk_id")
+                    channel_id = data.get("channel_id")
                     temp_id = data.get("temp_id")
 
                     if not isinstance(content, str):
@@ -289,7 +289,7 @@ async def websocket_chat(
                         continue
 
                     if is_rate_limited(
-                        room_id,
+                        workspace_id,
                         user.id
                     ):
                         await send_error(
@@ -300,11 +300,11 @@ async def websocket_chat(
 
                     saved_message = await create_realtime_message(
                         db,
-                        room_id,
+                        workspace_id,
                         user,
                         content,
                         extra_data,
-                        desk_id
+                        channel_id
                     )
 
                     if not saved_message:
@@ -335,8 +335,8 @@ async def websocket_chat(
                             "username":
                                 user.username,
 
-                            "room_id": room_id,
-                            "desk_id": saved_message.desk_id,
+                            "workspace_id": workspace_id,
+                            "channel_id": saved_message.channel_id,
                             "message": saved_message.content,
                             "extra_data": saved_message.extra_data,
                             "created_at": saved_message.created_at.replace(tzinfo=timezone.utc).isoformat(),
@@ -345,20 +345,20 @@ async def websocket_chat(
                     }
 
                     await manager.broadcast(
-                        room_id,
+                        workspace_id,
                         message_payload
                     )
 
                     # Process AI memory in background if enabled
-                    room_result = await db.execute(select(Room).where(Room.id == room_id))
-                    room = room_result.scalar()
+                    workspace_result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+                    workspace = workspace_result.scalar()
                     
-                    if room and room.ai_enabled:
+                    if workspace and workspace.ai_enabled:
                         try:
                             print("Scheduling memory extraction task")
                             asyncio.create_task(
                                 process_memory_background(
-                                    room_id,
+                                    workspace_id,
                                     user.id,
                                     saved_message.id,
                                     saved_message.content
@@ -369,7 +369,7 @@ async def websocket_chat(
                             logger.exception(
                                 "memory_background_task_create_failed",
                                 extra={
-                                    "room_id": room_id,
+                                    "workspace_id": workspace_id,
                                     "user_id": user.id
                                 }
                             )
@@ -383,7 +383,7 @@ async def websocket_chat(
                         if query_text:
                             asyncio.create_task(
                                 handle_ai_chat_command(
-                                    room_id,
+                                    workspace_id,
                                     query_text,
                                     is_web_query
                                 )
@@ -405,7 +405,7 @@ async def websocket_chat(
             logger.exception(
                 "websocket_chat_failed",
                 extra={
-                    "room_id": room_id,
+                    "workspace_id": workspace_id,
                     "user_id": user.id
                 }
             )
@@ -420,26 +420,26 @@ async def websocket_chat(
         finally:
 
             manager.disconnect(
-                room_id,
+                workspace_id,
                 user.username,
                 websocket
             )
 
             await manager.broadcast(
-                room_id,
+                workspace_id,
                 {
                     "type": "online_users",
                     "data": {
                         "users":
                             manager.get_online_users(
-                                room_id
+                                workspace_id
                             )
                     }
                 }
             )
 
 async def handle_ai_chat_command(
-    room_id: int,
+    workspace_id: int,
     query: str,
     is_web_query: bool
 ):
@@ -448,12 +448,12 @@ async def handle_ai_chat_command(
             if is_web_query:
                 answer = await generate_web_search_answer(query)
             else:
-                answer = await generate_room_answer(db, room_id, query)
+                answer = await generate_workspace_answer(db, workspace_id, query)
                 
             if answer:
                 saved_message = await create_realtime_message(
                     db,
-                    room_id,
+                    workspace_id,
                     user=None,
                     content=answer
                 )
@@ -465,14 +465,14 @@ async def handle_ai_chat_command(
                             "id": saved_message.id,
                             "user_id": None,
                             "username": "Rework AI",
-                            "room_id": room_id,
+                            "workspace_id": workspace_id,
                             "message": saved_message.content,
                             "created_at": saved_message.created_at.replace(tzinfo=timezone.utc).isoformat()
                         }
                     }
-                    await manager.broadcast(room_id, message_payload)
+                    await manager.broadcast(workspace_id, message_payload)
     except Exception:
         logger.exception(
             "ai_chat_command_failed",
-            extra={"room_id": room_id, "query": query, "is_web": is_web_query}
+            extra={"workspace_id": workspace_id, "query": query, "is_web": is_web_query}
         )

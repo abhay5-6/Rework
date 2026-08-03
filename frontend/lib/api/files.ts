@@ -11,7 +11,7 @@ export async function uploadRoomFile(
   formData.append("file", file);
 
   const response = await api.post(
-    `/rooms/${roomId}/files`,
+    `/workspaces/${roomId}/files`,
     formData,
     {
       headers: {

@@ -71,15 +71,15 @@ export default function Navbar() {
           {auth.isAuthenticated && (
             <div className="flex items-center gap-4">
               <Link
-                href="/rooms"
+                href="/workspaces"
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition ${
-                  isActive("/rooms") && !isActive("/orgs")
+                  isActive("/workspaces") && !isActive("/orgs")
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
                 <LayoutGrid size={16} />
-                Rooms
+                Workspaces
               </Link>
 
               <div className="relative" ref={dropdownRef}>
@@ -109,7 +109,7 @@ export default function Navbar() {
                         onClick={() => {
                           setActiveOrgId(org.id);
                           setShowOrgDropdown(false);
-                          if (pathname !== "/rooms") router.push("/rooms");
+                          if (pathname !== "/workspaces") router.push("/workspaces");
                         }}
                         className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left transition ${
                           activeOrgId === org.id

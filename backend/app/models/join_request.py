@@ -14,7 +14,7 @@ from app.db.database import Base
 class RoomJoinRequest(Base):
 
     __tablename__ = (
-        "room_join_requests"
+        "workspace_join_requests"
     )
 
     id: Mapped[int] = mapped_column(
@@ -25,8 +25,8 @@ class RoomJoinRequest(Base):
         ForeignKey("users.id")
     )
 
-    room_id: Mapped[int] = mapped_column(
-        ForeignKey("rooms.id")
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id")
     )
 
     status: Mapped[str] = mapped_column(

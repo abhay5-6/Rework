@@ -13,12 +13,12 @@ from sqlalchemy.orm import (
 from app.db.database import Base
 
 
-class RoomMembership(Base):
-    __tablename__ = "room_memberships"
+class WorkspaceMembership(Base):
+    __tablename__ = "workspace_memberships"
     __table_args__ = (
-        Index("ix_room_membership_user_id", "user_id"),
-        Index("ix_room_membership_room_id", "room_id"),
-        Index("ix_room_membership_user_room", "user_id", "room_id"),
+        Index("ix_workspace_membership_user_id", "user_id"),
+        Index("ix_workspace_membership_workspace_id", "workspace_id"),
+        Index("ix_workspace_membership_user_workspace", "user_id", "workspace_id"),
     )
 
     id: Mapped[int] = mapped_column(
@@ -29,8 +29,8 @@ class RoomMembership(Base):
         ForeignKey("users.id")
     )
 
-    room_id: Mapped[int] = mapped_column(
-        ForeignKey("rooms.id")
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id")
     )    
 
     role: Mapped[str] = mapped_column(

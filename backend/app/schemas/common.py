@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.schemas.room import RoomResponse
+from app.schemas.workspace import RoomResponse
 
 
 class MessageOnlyResponse(BaseModel):
@@ -23,8 +23,8 @@ class RoomListResponse(BaseModel):
 
 class RoomJoinRequestResponse(BaseModel):
     request_id: int
-    room_id: int
-    room_name: str
+    workspace_id: int
+    workspace_name: str
     user_id: int
     username: str
     status: str
@@ -105,7 +105,7 @@ class MemoryReinforceResponse(BaseModel):
     confidence_score: float
 
 
-class RoomTaskResponse(BaseModel):
+class WorkspaceTaskResponse(BaseModel):
     id: int
     description: str
     assignee_username: str | None = None

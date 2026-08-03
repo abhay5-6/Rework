@@ -4,7 +4,7 @@ export async function getJoinRequests() {
 
   const response =
     await api.get(
-      "/rooms/join-requests"
+      "/workspaces/join-requests"
     );
 
   return response.data;
@@ -17,7 +17,7 @@ export async function approveJoinRequest(
   const response =
     await api.post(
 
-      `/rooms/join-requests/${requestId}/approve`,
+      `/workspaces/join-requests/${requestId}/approve`,
 
       {}
     );
@@ -32,7 +32,7 @@ export async function rejectJoinRequest(
   const response =
     await api.post(
 
-      `/rooms/join-requests/${requestId}/reject`,
+      `/workspaces/join-requests/${requestId}/reject`,
 
       {}
     );

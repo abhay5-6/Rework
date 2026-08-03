@@ -27,37 +27,37 @@ class ConnectionManager:
 
     async def connect(
         self,
-        room_id: int,
+        workspace_id: int,
         username: str,
         websocket: WebSocket
     ):
 
         await websocket.accept()
 
-        if room_id not in (
+        if workspace_id not in (
             self.active_connections
         ):
             self.active_connections[
-                room_id
+                workspace_id
             ] = []
 
-        if room_id not in (
+        if workspace_id not in (
             self.online_users
         ):
             self.online_users[
-                room_id
+                workspace_id
             ] = set()
 
-        if room_id not in (
+        if workspace_id not in (
             self.user_connections
         ):
             self.user_connections[
-                room_id
+                workspace_id
             ] = {}
 
         existing_connection = (
             self.user_connections[
-                room_id
+                workspace_id
             ].get(username)
         )
 
@@ -71,119 +71,119 @@ class ConnectionManager:
 
             if existing_connection in (
                 self.active_connections[
-                    room_id
+                    workspace_id
                 ]
             ):
                 self.active_connections[
-                    room_id
+                    workspace_id
                 ].remove(existing_connection)
 
         self.active_connections[
-            room_id
+            workspace_id
         ].append(websocket)
 
         self.user_connections[
-            room_id
+            workspace_id
         ][username] = websocket
 
         self.online_users[
-            room_id
+            workspace_id
         ].add(username)
 
     def disconnect(
         self,
-        room_id: int,
+        workspace_id: int,
         username: str,
         websocket: WebSocket
     ):
 
-        if room_id in (
+        if workspace_id in (
             self.active_connections
         ):
 
             if websocket in (
                 self.active_connections[
-                    room_id
+                    workspace_id
                 ]
             ):
 
                 self.active_connections[
-                    room_id
+                    workspace_id
                 ].remove(websocket)
 
             if not self.active_connections[
-                room_id
+                workspace_id
             ]:
 
                 del self.active_connections[
-                    room_id
+                    workspace_id
                 ]
 
-        if room_id in (
+        if workspace_id in (
             self.user_connections
         ):
 
             if (
                 self.user_connections[
-                    room_id
+                    workspace_id
                 ].get(username)
                 is websocket
             ):
                 del self.user_connections[
-                    room_id
+                    workspace_id
                 ][username]
 
             if not self.user_connections[
-                room_id
+                workspace_id
             ]:
 
                 del self.user_connections[
-                    room_id
+                    workspace_id
                 ]
 
-        if room_id in (
+        if workspace_id in (
             self.online_users
         ):
 
             has_current_connection = (
-                room_id in self.user_connections
+                workspace_id in self.user_connections
                 and username in self.user_connections[
-                    room_id
+                    workspace_id
                 ]
             )
 
             if not has_current_connection:
                 self.online_users[
-                    room_id
+                    workspace_id
                 ].discard(username)
 
             if not self.online_users[
-                room_id
+                workspace_id
             ]:
 
                 del self.online_users[
-                    room_id
+                    workspace_id
                 ]
 
     def get_online_users(
         self,
-        room_id: int
+        workspace_id: int
     ):
 
         return list(
             self.online_users.get(
-                room_id,
+                workspace_id,
                 set()
             )
         )
 
     async def broadcast(
         self,
-        room_id: int,
+        workspace_id: int,
         message: dict
     ):
 
-        if room_id not in (
+        if workspace_id not in (
             self.active_connections
         ):
             return
@@ -192,7 +192,7 @@ class ConnectionManager:
 
         for connection in (
             self.active_connections[
-                room_id
+                workspace_id
             ]
         ):
 
@@ -211,15 +211,15 @@ class ConnectionManager:
         for connection in disconnected:
 
             self.active_connections[
-                room_id
+                workspace_id
             ].remove(connection)
 
             if not self.active_connections[
-                room_id
+                workspace_id
             ]:
 
                 del self.active_connections[
-                    room_id
+                    workspace_id
                 ]
 
 manager = ConnectionManager()

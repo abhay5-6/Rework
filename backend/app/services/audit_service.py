@@ -14,7 +14,7 @@ async def log_audit_event(
     action: str,
     resource_type: str,
     resource_id: int | None = None,
-    room_id: int | None = None,
+    workspace_id: int | None = None,
     details: str | None = None,
     ip_address: str | None = None,
     status: str = "success"
@@ -26,9 +26,9 @@ async def log_audit_event(
         db: Database session
         user_id: ID of user performing action
         action: Action code (from AuditLog.ACTIONS)
-        resource_type: Type of resource (e.g., 'room', 'message', 'user')
+        resource_type: Type of resource (e.g., 'workspace', 'message', 'user')
         resource_id: ID of the resource affected
-        room_id: Room ID if applicable
+        workspace_id: Workspace ID if applicable
         details: Additional details about the action
         ip_address: IP address of the request
         status: Success/failure status
@@ -39,7 +39,7 @@ async def log_audit_event(
     try:
         audit = AuditLog(
             user_id=user_id,
-            room_id=room_id,
+            workspace_id=workspace_id,
             action=action,
             resource_type=resource_type,
             resource_id=resource_id,

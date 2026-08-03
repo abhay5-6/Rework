@@ -6,33 +6,33 @@ from app.core.config import (
 )
 
 from app.services.ai.context_builder import (
-    build_room_context
+    build_workspace_context
 )
 
 
-async def generate_room_answer(
+async def generate_workspace_answer(
     db,
-    room_id: int,
+    workspace_id: int,
     query: str
 ):
-    print("Generating room answer for room_id:", room_id, "with query:", query)
+    print("Generating workspace answer for workspace_id:", workspace_id, "with query:", query)
 
     context = await (
-        build_room_context(
+        build_workspace_context(
             db,
-            room_id,
+            workspace_id,
             query
         )
     )
 
     prompt = f
-Room Context:
+Workspace Context:
 {context}
 
 User Question:
 {query}
 
-Answer using the room context whenever relevant.
+Answer using the workspace context whenever relevant.
 
 
     response = requests.post(
@@ -53,5 +53,5 @@ Answer using the room context whenever relevant.
     data = response.json()
 
     return data["response"]
-    print("Room answer generated for room_id:", room_id, "with query:", query)
+    print("Workspace answer generated for workspace_id:", workspace_id, "with query:", query)
 """

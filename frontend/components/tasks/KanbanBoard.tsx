@@ -22,7 +22,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getRoomTasks, updateTask, Task } from '@/lib/api/tasks';
+import { getWorkspaceTasks, updateTask, Task } from '@/lib/api/tasks';
 import { User, Clock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDroppable } from '@dnd-kit/core';
@@ -45,7 +45,7 @@ export default function KanbanBoard({ roomId, currentUsername }: KanbanBoardProp
 
   const loadTasks = useCallback(async () => {
     try {
-      const data = await getRoomTasks(roomId);
+      const data = await getWorkspaceTasks(roomId);
       // Map completed_at to status for older tasks if necessary
       const normalizedData = data.map(t => ({
         ...t,

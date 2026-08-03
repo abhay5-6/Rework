@@ -11,22 +11,22 @@ from app.services.ai.hybrid_retrieval_service import (
 )
 
 
-async def build_room_context(
+async def build_workspace_context(
 
     db: AsyncSession,
 
-    room_id: int,
+    workspace_id: int,
 
     query: str
 ):
     logger.debug(
-        "building_room_context",
-        extra={"room_id": room_id, "query": query},
+        "building_workspace_context",
+        extra={"workspace_id": workspace_id, "query": query},
     )
 
     retrieval_result = await retrieve_context(
         db=db,
-        room_id=room_id,
+        workspace_id=workspace_id,
         query=query,
         memory_limit=5,
         message_limit=10

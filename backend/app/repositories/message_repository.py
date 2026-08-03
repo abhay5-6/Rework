@@ -11,19 +11,19 @@ class MessageUpdate(BaseModel):
     pass
 
 class MessageRepository(BaseRepository[Message, Dict[str, Any], MessageUpdate]):
-    async def get_messages_for_room(
-        self, db: AsyncSession, *, room_id: int, desk_id: Optional[int] = None, skip: int = 0, limit: int = 50
+    async def get_messages_for_workspace(
+        self, db: AsyncSession, *, workspace_id: int, channel_id: Optional[int] = None, skip: int = 0, limit: int = 50
     ):
         from app.models.user import User
         
         query = (
             select(Message, User.username)
             .outerjoin(User, Message.sender_id == User.id)
-            .where(Message.room_id == room_id)
+            .where(Message.workspace_id == workspace_id)
         )
         
-        if desk_id is not None:
-            query = query.where(Message.desk_id == desk_id)
+        if channel_id is not None:
+            query = query.where(Message.channel_id == channel_id)
             
         query = query.order_by(Message.created_at.desc()).offset(skip).limit(limit)
         

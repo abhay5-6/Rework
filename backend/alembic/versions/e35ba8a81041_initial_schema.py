@@ -35,7 +35,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('username')
     )
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
-    op.create_table('rooms',
+    op.create_table('workspaces',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=100), nullable=False),
     sa.Column('description', sa.String(length=500), nullable=True),
@@ -45,37 +45,37 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
-    op.create_index(op.f('ix_rooms_id'), 'rooms', ['id'], unique=False)
+    op.create_index(op.f('ix_workspaces_id'), 'workspaces', ['id'], unique=False)
     op.create_table('messages',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
     sa.Column('sender_id', sa.Integer(), nullable=False),
-    sa.Column('room_id', sa.Integer(), nullable=False),
+    sa.Column('workspace_id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('embedding', VECTOR(384), nullable=True),
     sa.Column('message_type', sa.String(length=50), nullable=False),
     sa.Column('extra_data', sa.JSON(), nullable=False),
-    sa.ForeignKeyConstraint(['room_id'], ['rooms.id'], ),
+    sa.ForeignKeyConstraint(['workspace_id'], ['workspaces.id'], ),
     sa.ForeignKeyConstraint(['sender_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_messages_created_at', 'messages', ['created_at'], unique=False)
-    op.create_index('ix_messages_room_created_at', 'messages', ['room_id', 'created_at'], unique=False)
-    op.create_index('ix_messages_room_id', 'messages', ['room_id'], unique=False)
+    op.create_index('ix_messages_workspace_created_at', 'messages', ['workspace_id', 'created_at'], unique=False)
+    op.create_index('ix_messages_workspace_id', 'messages', ['workspace_id'], unique=False)
     op.create_index('ix_messages_sender_id', 'messages', ['sender_id'], unique=False)
-    op.create_table('room_memberships',
+    op.create_table('workspace_memberships',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('room_id', sa.Integer(), nullable=False),
+    sa.Column('workspace_id', sa.Integer(), nullable=False),
     sa.Column('role', sa.String(length=20), nullable=False),
     sa.Column('joined_at', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['room_id'], ['rooms.id'], ),
+    sa.ForeignKeyConstraint(['workspace_id'], ['workspaces.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('room_memories',
+    op.create_table('workspace_memories',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('room_id', sa.Integer(), nullable=False),
+    sa.Column('workspace_id', sa.Integer(), nullable=False),
     sa.Column('created_by', sa.Integer(), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
     sa.Column('memory_type', sa.String(length=50), nullable=False),
@@ -94,20 +94,20 @@ def upgrade() -> None:
     sa.Column('last_accessed_at', sa.DateTime(), nullable=False),
     sa.Column('last_reinforced_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['room_id'], ['rooms.id'], ),
+    sa.ForeignKeyConstraint(['workspace_id'], ['workspaces.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index('ix_room_memories_created_at', 'room_memories', ['created_at'], unique=False)
-    op.create_index('ix_room_memories_created_by', 'room_memories', ['created_by'], unique=False)
-    op.create_index('ix_room_memories_room_created_at', 'room_memories', ['room_id', 'created_at'], unique=False)
-    op.create_index('ix_room_memories_room_id', 'room_memories', ['room_id'], unique=False)
+    op.create_index('ix_workspace_memories_created_at', 'workspace_memories', ['created_at'], unique=False)
+    op.create_index('ix_workspace_memories_created_by', 'workspace_memories', ['created_by'], unique=False)
+    op.create_index('ix_workspace_memories_workspace_created_at', 'workspace_memories', ['workspace_id', 'created_at'], unique=False)
+    op.create_index('ix_workspace_memories_workspace_id', 'workspace_memories', ['workspace_id'], unique=False)
     op.create_table('memory_edges',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('source_memory_id', sa.Integer(), nullable=False),
     sa.Column('target_memory_id', sa.Integer(), nullable=False),
     sa.Column('relationship_type', sa.String(length=50), nullable=False),
-    sa.ForeignKeyConstraint(['source_memory_id'], ['room_memories.id'], ),
-    sa.ForeignKeyConstraint(['target_memory_id'], ['room_memories.id'], ),
+    sa.ForeignKeyConstraint(['source_memory_id'], ['workspace_memories.id'], ),
+    sa.ForeignKeyConstraint(['target_memory_id'], ['workspace_memories.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
@@ -117,19 +117,19 @@ def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('memory_edges')
-    op.drop_index('ix_room_memories_room_id', table_name='room_memories')
-    op.drop_index('ix_room_memories_room_created_at', table_name='room_memories')
-    op.drop_index('ix_room_memories_created_by', table_name='room_memories')
-    op.drop_index('ix_room_memories_created_at', table_name='room_memories')
-    op.drop_table('room_memories')
-    op.drop_table('room_memberships')
+    op.drop_index('ix_workspace_memories_workspace_id', table_name='workspace_memories')
+    op.drop_index('ix_workspace_memories_workspace_created_at', table_name='workspace_memories')
+    op.drop_index('ix_workspace_memories_created_by', table_name='workspace_memories')
+    op.drop_index('ix_workspace_memories_created_at', table_name='workspace_memories')
+    op.drop_table('workspace_memories')
+    op.drop_table('workspace_memberships')
     op.drop_index('ix_messages_sender_id', table_name='messages')
-    op.drop_index('ix_messages_room_id', table_name='messages')
-    op.drop_index('ix_messages_room_created_at', table_name='messages')
+    op.drop_index('ix_messages_workspace_id', table_name='messages')
+    op.drop_index('ix_messages_workspace_created_at', table_name='messages')
     op.drop_index('ix_messages_created_at', table_name='messages')
     op.drop_table('messages')
-    op.drop_index(op.f('ix_rooms_id'), table_name='rooms')
-    op.drop_table('rooms')
+    op.drop_index(op.f('ix_workspaces_id'), table_name='workspaces')
+    op.drop_table('workspaces')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_table('users')
     # ### end Alembic commands ###

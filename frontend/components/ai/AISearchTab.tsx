@@ -5,7 +5,7 @@ import { searchRoom, queryRoom, SearchResult } from "@/lib/api/ai";
 const PREBUILT_QUERIES = [
   "What decisions have we made?",
   "What are current tasks?",
-  "Summarize this room",
+  "Summarize this workspace",
   "What are unresolved bugs?",
   "What is the architecture?",
   "Key learnings and insights",

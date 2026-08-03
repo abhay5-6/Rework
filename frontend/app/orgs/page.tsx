@@ -53,7 +53,7 @@ export default function OrgsPage() {
 
   function handleSelectOrg(orgId: number) {
     setActiveOrgId(orgId);
-    router.push("/rooms");
+    router.push("/workspaces");
   }
 
   if (loading) {

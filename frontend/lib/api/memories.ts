@@ -1,8 +1,8 @@
 import api from "./client";
 
-export type RoomMemory = {
+export type WorkspaceMemory = {
   id: number;
-  room_id: number;
+  workspace_id: number;
   created_by: number;
   creator_username?: string | null;
   content: string;
@@ -17,17 +17,17 @@ export type RoomMemory = {
   last_reinforced_at: string;
 };
 
-export async function getRoomMemories(roomId: number, limit = 20): Promise<RoomMemory[]> {
-  const response = await api.get(`/rooms/${roomId}/memories?limit=${limit}`);
+export async function getRoomMemories(roomId: number, limit = 20): Promise<WorkspaceMemory[]> {
+  const response = await api.get(`/workspaces/${roomId}/memories?limit=${limit}`);
   return response.data;
 }
 
 export async function getStaleMemories(roomId: number, daysOld: number = 30) {
-  const response = await api.get(`/rooms/${roomId}/memories/stale?days_old=${daysOld}`);
+  const response = await api.get(`/workspaces/${roomId}/memories/stale?days_old=${daysOld}`);
   return response.data;
 }
 
-export async function createRoomMemory(
+export async function createWorkspaceMemory(
   roomId: number,
   memory: {
     content: string;
@@ -37,25 +37,25 @@ export async function createRoomMemory(
     importance_score?: number;
   }
 ) {
-  const response = await api.post(`/rooms/${roomId}/memories`, memory);
+  const response = await api.post(`/workspaces/${roomId}/memories`, memory);
   return response.data;
 }
 
-export async function updateRoomMemory(
+export async function updateWorkspaceMemory(
   roomId: number,
   memoryId: number,
   updates: { content?: string; importance_score?: number; tags?: string[] }
 ) {
-  const response = await api.patch(`/rooms/${roomId}/memories/${memoryId}`, updates);
+  const response = await api.patch(`/workspaces/${roomId}/memories/${memoryId}`, updates);
   return response.data;
 }
 
 export async function reinforceMemory(roomId: number, memoryId: number) {
-  const response = await api.post(`/rooms/${roomId}/memories/${memoryId}/reinforce`, {});
+  const response = await api.post(`/workspaces/${roomId}/memories/${memoryId}/reinforce`, {});
   return response.data;
 }
 
 export async function pruneMemory(roomId: number, memoryId: number) {
-  const response = await api.delete(`/rooms/${roomId}/memories/${memoryId}`);
+  const response = await api.delete(`/workspaces/${roomId}/memories/${memoryId}`);
   return response.data;
 }

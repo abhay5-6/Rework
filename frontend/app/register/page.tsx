@@ -45,7 +45,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (auth.isAuthenticated) {
-      router.push("/rooms");
+      router.push("/workspaces");
     }
   }, [auth.isAuthenticated, router]);
 

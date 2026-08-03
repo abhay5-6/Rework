@@ -14,12 +14,12 @@ from app.db.database import Base
 class Message(Base):
     __tablename__ = "messages"
     __table_args__ = (
-        Index("ix_messages_room_id", "room_id"),
+        Index("ix_messages_workspace_id", "workspace_id"),
         Index("ix_messages_sender_id", "sender_id"),
         Index("ix_messages_created_at", "created_at"),
         Index(
-            "ix_messages_room_created_at",
-            "room_id",
+            "ix_messages_workspace_created_at",
+            "workspace_id",
             "created_at"
         ),
     )
@@ -38,12 +38,12 @@ class Message(Base):
         nullable=True
     )
 
-    room_id: Mapped[int] = mapped_column(
-        ForeignKey("rooms.id")
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id")
     )
 
-    desk_id: Mapped[int | None] = mapped_column(
-        ForeignKey("desks.id", ondelete="CASCADE"),
+    channel_id: Mapped[int | None] = mapped_column(
+        ForeignKey("channels.id", ondelete="CASCADE"),
         nullable=True
     )
 

@@ -2,8 +2,8 @@ import logging
 
 from sqlalchemy import select
 
-from app.models.room_memory import (
-    RoomMemory
+from app.models.workspace_memory import (
+    WorkspaceMemory
 )
 
 from app.models.memory_edge import (
@@ -23,15 +23,15 @@ async def build_memory_relationships(
 
     new_memory
 ):
-    logger.debug("building_relationships", extra={"memory_id": new_memory.id, "room_id": new_memory.room_id})
+    logger.debug("building_relationships", extra={"memory_id": new_memory.id, "workspace_id": new_memory.workspace_id})
 
     result = await db.execute(
 
-        select(RoomMemory)
+        select(WorkspaceMemory)
 
         .where(
-            RoomMemory.room_id
-            == new_memory.room_id
+            WorkspaceMemory.workspace_id
+            == new_memory.workspace_id
         )
     )
 

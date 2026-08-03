@@ -6,16 +6,16 @@ from app.core.security import (
     decode_access_token
 )
 from app.models.user import User
-from app.models.room import Room
+from app.models.workspace import Workspace
 
 from app.models.membership import (
-    RoomMembership
+    WorkspaceMembership
 )
 
 
 async def authenticate_websocket(
     token: str,
-    room_id: int,
+    workspace_id: int,
     db: AsyncSession
 ):
 
@@ -44,27 +44,27 @@ async def authenticate_websocket(
     if not user:
         return None
 
-    room_result = await db.execute(
-        select(Room).where(
-            Room.id == room_id
+    workspace_result = await db.execute(
+        select(Workspace).where(
+            Workspace.id == workspace_id
         )
     )
 
-    room = room_result.scalar()
+    workspace = workspace_result.scalar()
 
-    if not room:
+    if not workspace:
         return None
 
-    # PUBLIC ROOM
-    if not room.is_private:
+    # PUBLIC WORKSPACE
+    if not workspace.is_private:
         return user
 
-    # PRIVATE ROOM
+    # PRIVATE WORKSPACE
 
     membership_result = await db.execute(
-        select(RoomMembership).where(
-            RoomMembership.user_id == user.id,
-            RoomMembership.room_id == room_id
+        select(WorkspaceMembership).where(
+            WorkspaceMembership.user_id == user.id,
+            WorkspaceMembership.workspace_id == workspace_id
         )
     )
 

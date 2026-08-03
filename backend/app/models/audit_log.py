@@ -10,7 +10,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
     __table_args__ = (
         Index("ix_audit_logs_user_id", "user_id"),
-        Index("ix_audit_logs_room_id", "room_id"),
+        Index("ix_audit_logs_workspace_id", "workspace_id"),
         Index("ix_audit_logs_action", "action"),
         Index("ix_audit_logs_created_at", "created_at"),
         Index("ix_audit_logs_user_action", "user_id", "action"),
@@ -26,7 +26,7 @@ class AuditLog(Base):
         index=True
     )
 
-    room_id: Mapped[int | None] = mapped_column(
+    workspace_id: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
         index=True
@@ -81,14 +81,14 @@ class AuditLog(Base):
         "EMAIL_VERIFY": "email_verify",
         "EMAIL_VERIFY_REQUEST": "email_verify_request",
         
-        # Room management
-        "CREATE_ROOM": "create_room",
-        "DELETE_ROOM": "delete_room",
-        "UPDATE_ROOM": "update_room",
+        # Workspace management
+        "CREATE_WORKSPACE": "create_workspace",
+        "DELETE_WORKSPACE": "delete_workspace",
+        "UPDATE_WORKSPACE": "update_workspace",
         
         # Member management
-        "JOIN_ROOM": "join_room",
-        "LEAVE_ROOM": "leave_room",
+        "JOIN_WORKSPACE": "join_workspace",
+        "LEAVE_WORKSPACE": "leave_workspace",
         "PROMOTE_MEMBER": "promote_member",
         "DEMOTE_MEMBER": "demote_member",
         "REMOVE_MEMBER": "remove_member",

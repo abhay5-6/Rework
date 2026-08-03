@@ -13,8 +13,8 @@ import {
 
 export type JoinRequest = {
   request_id: number;
-  room_id: number;
-  room_name: string;
+  workspace_id: number;
+  workspace_name: string;
   user_id: number;
   username: string;
 };

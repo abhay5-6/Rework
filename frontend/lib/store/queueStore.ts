@@ -4,8 +4,8 @@ import { create } from "zustand";
 /** Represents an offline message queued for WebSocket auto-flushing upon reconnection */
 export interface QueuedMessage {
   temp_id: string;
-  room_id: number;
-  desk_id: number | null;
+  workspace_id: number;
+  channel_id: number | null;
   content: string;
   extra_data?: Record<string, unknown>;
   created_at: string; // ISO string for sorting
@@ -17,7 +17,7 @@ interface QueueState {
   addMessage: (msg: QueuedMessage) => void;
   removeMessage: (temp_id: string) => void;
   incrementRetry: (temp_id: string) => void;
-  clearQueue: (room_id?: number) => void;
+  clearQueue: (workspace_id?: number) => void;
 }
 
 /**
@@ -38,10 +38,10 @@ export const useQueueStore = create<QueueState>((set) => ({
         m.temp_id === temp_id ? { ...m, retry_count: m.retry_count + 1 } : m
       ),
     })),
-  clearQueue: (room_id) =>
+  clearQueue: (workspace_id) =>
     set((state) => ({
-      queue: room_id
-        ? state.queue.filter((m) => m.room_id !== room_id)
+      queue: workspace_id
+        ? state.queue.filter((m) => m.workspace_id !== workspace_id)
         : [],
     })),
 }));

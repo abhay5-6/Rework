@@ -14,7 +14,7 @@ from app.schemas.message import (
 )
 from app.services.message_service import (
     send_message,
-    get_room_messages
+    get_workspace_messages
 )
 from app.core.dependencies import get_current_user
 from app.core.config import settings
@@ -26,7 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/rooms",
+    prefix="/workspaces",
     tags=["Messages"]
 )
 from app.services.ai.auto_memory_service import (
@@ -35,7 +35,7 @@ from app.services.ai.auto_memory_service import (
 from fastapi import BackgroundTasks
 
 @router.post(
-    "/{room_id}/messages",
+    "/{workspace_id}/messages",
     response_model=MessageResponse
 )
 @limiter.limit(settings.message_rate_limit)
@@ -43,7 +43,7 @@ async def create_message(
 
     request: Request,
 
-    room_id: int,
+    workspace_id: int,
 
     message: MessageCreate,
 
@@ -60,7 +60,7 @@ async def create_message(
 
         db,
 
-        room_id,
+        workspace_id,
 
         current_user,
 
@@ -75,7 +75,7 @@ async def create_message(
 
             detail=(
                 "You are not a member "
-                "of this room"
+                "of this workspace"
             )
         )
 
@@ -85,7 +85,7 @@ async def create_message(
 
         process_memory_background,
 
-        room_id,
+        workspace_id,
 
         current_user.id,
 
@@ -96,11 +96,11 @@ async def create_message(
 
     return created_message
 @router.get(
-    "/{room_id}/messages",
+    "/{workspace_id}/messages",
     response_model=list[MessageResponse]
 )
-async def list_room_messages(
-    room_id: int,
+async def list_workspace_messages(
+    workspace_id: int,
     limit: int = Query(
         default=50,
         ge=1,
@@ -113,9 +113,9 @@ async def list_room_messages(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    messages = await get_room_messages(
+    messages = await get_workspace_messages(
         db,
-        room_id,
+        workspace_id,
         current_user,
         limit,
         offset
@@ -124,7 +124,7 @@ async def list_room_messages(
     if messages is None:
         raise HTTPException(
             status_code=403,
-            detail="You are not a member of this room"
+            detail="You are not a member of this workspace"
         )
 
     return messages

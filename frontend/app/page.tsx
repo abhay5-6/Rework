@@ -26,10 +26,10 @@ export default function Home() {
           </Link>
 
           <Link
-            href="/rooms"
+            href="/workspaces"
             className="px-6 py-3 rounded-xl border border-border hover:bg-muted transition"
           >
-            Rooms
+            Workspaces
           </Link>
 
         </div>

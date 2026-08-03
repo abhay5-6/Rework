@@ -13,16 +13,16 @@ from sqlalchemy.ext.asyncio import (
 
 from app.db.session import get_db
 
-from app.schemas.room_memory import (
-    RoomMemoryCreate,
-    RoomMemoryResponse,
-    RoomMemoryUpdate,
+from app.schemas.workspace_memory import (
+    WorkspaceMemoryCreate,
+    WorkspaceMemoryResponse,
+    WorkspaceMemoryUpdate,
     SearchResult
 )
 
 from app.services.ai.memory_service import (
-    create_room_memory,
-    get_room_memories,
+    create_workspace_memory,
+    get_workspace_memories,
     get_stale_memories,
     reinforce_memory,
     update_memory,
@@ -43,14 +43,14 @@ from app.core.rate_limit import limiter
 
 from app.models.user import User
 
-from app.services.message_service import has_room_access
+from app.services.message_service import has_workspace_access
 
 from app.services.ai.retrieval_service import (
-    search_room_memories
+    search_workspace_memories
 )
 
 from app.services.ai.ai_client import (
-    generate_room_answer
+    generate_workspace_answer
 )
 
 from app.services.ai.hybrid_retrieval_service import (
@@ -63,37 +63,37 @@ from app.schemas.common import (
 )
 
 router = APIRouter(
-    prefix="/rooms",
+    prefix="/workspaces",
     tags=["Memories"]
 )
 
 
-async def require_room_access(
+async def require_workspace_access(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     current_user: User
 ):
-    if not await has_room_access(db, room_id, current_user):
+    if not await has_workspace_access(db, workspace_id, current_user):
         raise HTTPException(
             status_code=403,
-            detail="Access denied to this room"
+            detail="Access denied to this workspace"
         )
 
 
 @router.post(
-    "/{room_id}/memories",
-    response_model=RoomMemoryResponse
+    "/{workspace_id}/memories",
+    response_model=WorkspaceMemoryResponse
 )
-async def add_room_memory(
-    room_id: int,
-    memory: RoomMemoryCreate,
+async def add_workspace_memory(
+    workspace_id: int,
+    memory: WorkspaceMemoryCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
 
-    await require_room_access(
+    await require_workspace_access(
         db,
-        room_id,
+        workspace_id,
         current_user
     )
 
@@ -101,9 +101,9 @@ async def add_room_memory(
         memory.content
     )
 
-    created_memory = await create_room_memory(
+    created_memory = await create_workspace_memory(
         db=db,
-        room_id=room_id,
+        workspace_id=workspace_id,
         created_by=current_user.id,
         content=memory.content,
         embedding=embedding,
@@ -121,37 +121,37 @@ async def add_room_memory(
 
 
 @router.get(
-    "/{room_id}/memories",
-    response_model=List[RoomMemoryResponse]
+    "/{workspace_id}/memories",
+    response_model=List[WorkspaceMemoryResponse]
 )
-async def list_room_memories(
-    room_id: int,
+async def list_workspace_memories(
+    workspace_id: int,
     limit: int = 20,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    await require_room_access(db, room_id, current_user)
+    await require_workspace_access(db, workspace_id, current_user)
 
-    return await get_room_memories(db, room_id, min(max(limit, 1), 50))
+    return await get_workspace_memories(db, workspace_id, min(max(limit, 1), 50))
 
 
 @router.get(
-    "/{room_id}/memories/search",
-    response_model=List[RoomMemoryResponse]
+    "/{workspace_id}/memories/search",
+    response_model=List[WorkspaceMemoryResponse]
 )
 @limiter.limit(settings.ai_rate_limit)
 async def semantic_memory_search(
     request: Request,
-    room_id: int,
+    workspace_id: int,
     query: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    await require_room_access(db, room_id, current_user)
+    await require_workspace_access(db, workspace_id, current_user)
 
-    memories = await search_room_memories(
+    memories = await search_workspace_memories(
         db,
-        room_id,
+        workspace_id,
         query
     )
 
@@ -159,22 +159,22 @@ async def semantic_memory_search(
 
 
 @router.get(
-    "/{room_id}/search",
+    "/{workspace_id}/search",
     response_model=SearchResult
 )
 @limiter.limit(settings.ai_rate_limit)
 async def hybrid_search(
     request: Request,
-    room_id: int,
+    workspace_id: int,
     query: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    await require_room_access(db, room_id, current_user)
+    await require_workspace_access(db, workspace_id, current_user)
 
     result = await retrieve_context(
         db=db,
-        room_id=room_id,
+        workspace_id=workspace_id,
         query=query,
         memory_limit=5,
         message_limit=10
@@ -184,22 +184,22 @@ async def hybrid_search(
 
 
 @router.get(
-    "/{room_id}/ai",
+    "/{workspace_id}/ai",
     response_model=RoomAiAnswerResponse
 )
 @limiter.limit(settings.ai_rate_limit)
-async def room_ai_query(
+async def workspace_ai_query(
     request: Request,
-    room_id: int,
+    workspace_id: int,
     query: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    await require_room_access(db, room_id, current_user)
+    await require_workspace_access(db, workspace_id, current_user)
 
-    answer = await generate_room_answer(
+    answer = await generate_workspace_answer(
         db,
-        room_id,
+        workspace_id,
         query
     )
 
@@ -208,50 +208,50 @@ async def room_ai_query(
     }
 
 @router.get(
-    "/{room_id}/memories/stale",
-    response_model=List[RoomMemoryResponse]
+    "/{workspace_id}/memories/stale",
+    response_model=List[WorkspaceMemoryResponse]
 )
 async def get_stale(
-    room_id: int,
+    workspace_id: int,
     days_old: int = 30,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    await require_room_access(db, room_id, current_user)
+    await require_workspace_access(db, workspace_id, current_user)
 
-    memories = await get_stale_memories(db, room_id, days_old)
+    memories = await get_stale_memories(db, workspace_id, days_old)
     return memories
 
 @router.post(
-    "/{room_id}/memories/{memory_id}/reinforce",
+    "/{workspace_id}/memories/{memory_id}/reinforce",
     response_model=MemoryReinforceResponse
 )
 async def reinforce(
-    room_id: int,
+    workspace_id: int,
     memory_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    await require_room_access(db, room_id, current_user)
+    await require_workspace_access(db, workspace_id, current_user)
 
-    memory = await reinforce_memory(db, room_id, memory_id)
+    memory = await reinforce_memory(db, workspace_id, memory_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
     return {"message": "Memory reinforced", "confidence_score": memory.confidence_score}
 
 
 @router.patch(
-    "/{room_id}/memories/{memory_id}",
-    response_model=RoomMemoryResponse
+    "/{workspace_id}/memories/{memory_id}",
+    response_model=WorkspaceMemoryResponse
 )
 async def edit_memory(
-    room_id: int,
+    workspace_id: int,
     memory_id: int,
-    payload: RoomMemoryUpdate,
+    payload: WorkspaceMemoryUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    await require_room_access(db, room_id, current_user)
+    await require_workspace_access(db, workspace_id, current_user)
 
     content = payload.content.strip() if payload.content is not None else None
     if content == "":
@@ -260,7 +260,7 @@ async def edit_memory(
     embedding = await generate_embedding(content) if content else None
     memory = await update_memory(
         db,
-        room_id,
+        workspace_id,
         memory_id,
         content=content,
         embedding=embedding,
@@ -274,18 +274,18 @@ async def edit_memory(
     return memory
 
 @router.delete(
-    "/{room_id}/memories/{memory_id}",
+    "/{workspace_id}/memories/{memory_id}",
     response_model=MessageOnlyResponse
 )
 async def delete_stale_memory(
-    room_id: int,
+    workspace_id: int,
     memory_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    await require_room_access(db, room_id, current_user)
+    await require_workspace_access(db, workspace_id, current_user)
 
-    success = await delete_memory(db, room_id, memory_id)
+    success = await delete_memory(db, workspace_id, memory_id)
     if not success:
         raise HTTPException(status_code=404, detail="Memory not found")
     return {"message": "Memory pruned successfully"}

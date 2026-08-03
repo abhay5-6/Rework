@@ -47,7 +47,7 @@ export function useWebRTC(roomId: number, currentUser: string, socketRef: React.
       setInCall(true);
       inCallRef.current = true;
       
-      // Announce to the room that we joined
+      // Announce to the workspace that we joined
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         console.log("Sending join_call");
         socketRef.current.send(JSON.stringify({

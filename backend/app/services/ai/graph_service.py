@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession
 )
 
-from app.models.room_memory import (
-    RoomMemory
+from app.models.workspace_memory import (
+    WorkspaceMemory
 )
 
 from app.models.memory_edge import (
@@ -19,21 +19,21 @@ from app.models.memory_edge import (
 logger = logging.getLogger(__name__)
 
 
-async def build_room_graph(
+async def build_workspace_graph(
 
     db: AsyncSession,
 
-    room_id: int
+    workspace_id: int
 ):
-    logger.debug("building_room_graph", extra={"room_id": room_id})
+    logger.debug("building_workspace_graph", extra={"workspace_id": workspace_id})
 
     memory_result = await db.execute(
 
-        select(RoomMemory)
+        select(WorkspaceMemory)
 
         .where(
-            RoomMemory.room_id
-            == room_id
+            WorkspaceMemory.workspace_id
+            == workspace_id
         )
     )
 

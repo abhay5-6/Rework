@@ -14,13 +14,13 @@ from app.db.session import (
 )
 
 from app.services.ai.graph_service import (
-    build_room_graph
+    build_workspace_graph
 )
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.services.message_service import has_room_access
+from app.services.message_service import has_workspace_access
 from app.schemas.common import RoomGraphResponse
 
 
@@ -33,14 +33,14 @@ router = APIRouter(
 
 
 @router.get(
-    "/graph/{room_id}",
+    "/graph/{workspace_id}",
     response_model=RoomGraphResponse
 )
 @limiter.limit(settings.ai_rate_limit)
-async def get_room_graph(
+async def get_workspace_graph(
     request: Request,
 
-    room_id: int,
+    workspace_id: int,
 
     db: AsyncSession = Depends(
         get_db
@@ -51,24 +51,24 @@ async def get_room_graph(
     )
 ):
 
-    # Verify user has access to room
-    has_access = await has_room_access(
+    # Verify user has access to workspace
+    has_access = await has_workspace_access(
         db,
-        room_id,
+        workspace_id,
         current_user
     )
 
     if not has_access:
         raise HTTPException(
             status_code=403,
-            detail="Access denied to this room"
+            detail="Access denied to this workspace"
         )
     
 
     graph = await (
-        build_room_graph(
+        build_workspace_graph(
             db,
-            room_id
+            workspace_id
         )
     )
 

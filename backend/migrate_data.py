@@ -6,9 +6,9 @@ from sqlalchemy import update
 
 from app.db.database import engine
 from app.models.user import User
-from app.models.room import Room
+from app.models.workspace import Workspace
 from app.models.organization import Organization, OrgMembership
-from app.models.desk import Desk
+from app.models.channel import Channel
 from app.models.message import Message
 
 AsyncSessionLocal = sessionmaker(
@@ -49,50 +49,50 @@ async def migrate_data():
             
         await db.commit()
         
-        # 2. Migrate existing rooms to their owner's organization
-        rooms_result = await db.execute(select(Room).where(Room.organization_id == None))
-        rooms = rooms_result.scalars().all()
+        # 2. Migrate existing workspaces to their owner's organization
+        rooms_result = await db.execute(select(Workspace).where(Workspace.organization_id == None))
+        workspaces = rooms_result.scalars().all()
         
-        for room in rooms:
-            if room.owner_id in user_orgs:
-                room.organization_id = user_orgs[room.owner_id]
-                print(f"Assigned room '{room.name}' to org {user_orgs[room.owner_id]}")
+        for workspace in workspaces:
+            if workspace.owner_id in user_orgs:
+                workspace.organization_id = user_orgs[workspace.owner_id]
+                print(f"Assigned workspace '{workspace.name}' to org {user_orgs[workspace.owner_id]}")
         
         await db.commit()
         
-        # 3. Ensure every room has a 'general' desk
-        all_rooms_result = await db.execute(select(Room))
-        all_rooms = all_rooms_result.scalars().all()
+        # 3. Ensure every workspace has a 'general' channel
+        all_workspaces_result = await db.execute(select(Workspace))
+        all_workspaces = all_workspaces_result.scalars().all()
         
-        room_default_desks = {}
-        for room in all_rooms:
-            desk_result = await db.execute(
-                select(Desk).where(Desk.room_id == room.id, Desk.name == "general")
+        workspace_default_channels = {}
+        for workspace in all_workspaces:
+            channel_result = await db.execute(
+                select(Channel).where(Channel.workspace_id == workspace.id, Channel.name == "general")
             )
-            desk = desk_result.scalars().first()
+            channel = channel_result.scalars().first()
             
-            if not desk:
-                desk = Desk(name="general", description="General discussion", room_id=room.id)
-                db.add(desk)
+            if not channel:
+                channel = Channel(name="general", description="General discussion", workspace_id=workspace.id)
+                db.add(channel)
                 await db.flush()
-                print(f"Created 'general' desk for room '{room.name}'")
+                print(f"Created 'general' channel for workspace '{workspace.name}'")
                 
-            room_default_desks[room.id] = desk.id
+            workspace_default_channels[workspace.id] = channel.id
             
         await db.commit()
         
-        # 4. Migrate existing messages to the default desk of their room
-        messages_result = await db.execute(select(Message).where(Message.desk_id == None))
+        # 4. Migrate existing messages to the default channel of their workspace
+        messages_result = await db.execute(select(Message).where(Message.channel_id == None))
         messages = messages_result.scalars().all()
         
         count = 0
         for msg in messages:
-            if msg.room_id in room_default_desks:
-                msg.desk_id = room_default_desks[msg.room_id]
+            if msg.workspace_id in workspace_default_channels:
+                msg.channel_id = workspace_default_channels[msg.workspace_id]
                 count += 1
                 
         if count > 0:
-            print(f"Migrated {count} messages to their respective default desks.")
+            print(f"Migrated {count} messages to their respective default channels.")
             
         await db.commit()
         print("Data migration completed successfully.")

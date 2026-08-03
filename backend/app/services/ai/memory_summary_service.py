@@ -9,11 +9,11 @@ from app.core.config import (
 )
 
 from app.services.ai.retrieval_service import (
-    search_room_memories
+    search_workspace_memories
 )
 
 from app.services.ai.memory_service import (
-    create_room_memory
+    create_workspace_memory
 )
 
 from app.services.ai.embedding_service import (
@@ -31,7 +31,7 @@ async def generate_memory_summary(
 
     db,
 
-    room_id: int,
+    workspace_id: int,
 
     topic_query: str,
 
@@ -40,15 +40,15 @@ async def generate_memory_summary(
 
     logger.debug(
         "generating_memory_summary",
-        extra={"room_id": room_id, "topic_query": topic_query},
+        extra={"workspace_id": workspace_id, "topic_query": topic_query},
     )
 
     memories = await (
-        search_room_memories(
+        search_workspace_memories(
 
             db=db,
 
-            room_id=room_id,
+            workspace_id=workspace_id,
 
             query=topic_query,
 
@@ -97,11 +97,11 @@ Memories:
     )
 
     stored_summary = await (
-        create_room_memory(
+        create_workspace_memory(
 
             db=db,
 
-            room_id=room_id,
+            workspace_id=workspace_id,
 
             created_by=created_by,
 
@@ -124,7 +124,7 @@ Memories:
 
     logger.debug(
         "memory_summary_stored",
-        extra={"memory_id": stored_summary.id, "room_id": room_id},
+        extra={"memory_id": stored_summary.id, "workspace_id": workspace_id},
     )
 
     return {

@@ -8,7 +8,7 @@ from app.core.config import (
 )
 
 from app.services.ai.context_builder import (
-    build_room_context
+    build_workspace_context
 )
 
 client = genai.Client(
@@ -18,27 +18,27 @@ client = genai.Client(
 logger = logging.getLogger(__name__)
 
 
-async def generate_room_answer(
+async def generate_workspace_answer(
     db,
-    room_id: int,
+    workspace_id: int,
     query: str,
 ):
     logger.debug(
-        "generating_room_answer",
-        extra={"room_id": room_id, "query": query},
+        "generating_workspace_answer",
+        extra={"workspace_id": workspace_id, "query": query},
     )
 
-    context = await build_room_context(
+    context = await build_workspace_context(
         db=db,
-        room_id=room_id,
+        workspace_id=workspace_id,
         query=query,
     )
 
     prompt = f"""
 You are Rework AI.
 
-Answer questions using the room memories,
-retrieved messages, and room context.
+Answer questions using the workspace memories,
+retrieved messages, and workspace context.
 
 If relevant information exists in memory,
 use it.
@@ -49,7 +49,7 @@ use it.
 If context is incomplete, answer normally
 and clearly indicate uncertainty.
 
-ROOM CONTEXT:
+WORKSPACE CONTEXT:
 
 {context}
 
@@ -66,8 +66,8 @@ USER QUESTION:
     answer = response.text
 
     logger.debug(
-        "room_answer_generated",
-        extra={"room_id": room_id},
+        "workspace_answer_generated",
+        extra={"workspace_id": workspace_id},
     )
 
     return answer

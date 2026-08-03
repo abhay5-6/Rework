@@ -2,7 +2,7 @@
 
 import { ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import StaleMemoryAlerts from "./StaleMemoryAlerts";
-import RoomMemoryList from "./RoomMemoryList";
+import WorkspaceMemoryList from "./WorkspaceMemoryList";
 import AISearchTab from "./AISearchTab";
 
 interface AIAssistantPanelProps {
@@ -46,7 +46,7 @@ export default function AIAssistantPanel({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          <RoomMemoryList roomId={roomId} />
+          <WorkspaceMemoryList roomId={roomId} />
           <AISearchTab roomId={roomId} />
         </div>
       </div>

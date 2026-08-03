@@ -22,7 +22,7 @@ class MemoryEdge(Base):
     source_memory_id: Mapped[int] = (
         mapped_column(
             ForeignKey(
-                "room_memories.id"
+                "workspace_memories.id"
             )
         )
     )
@@ -30,7 +30,7 @@ class MemoryEdge(Base):
     target_memory_id: Mapped[int] = (
         mapped_column(
             ForeignKey(
-                "room_memories.id"
+                "workspace_memories.id"
             )
         )
     )

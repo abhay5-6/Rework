@@ -2,33 +2,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.utils.permissions import (
-    is_room_owner,
-    is_room_admin
+    is_workspace_owner,
+    is_workspace_admin
 )
-from app.repositories.room_repository import room_repo
+from app.repositories.workspace_repository import workspace_repo
 from app.repositories.membership_repository import membership_repo
 
 
-async def get_room_members(
+async def get_workspace_members(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     current_user: User
 ):
-    room = await room_repo.get(db, id=room_id)
-    if not room:
+    workspace = await workspace_repo.get(db, id=workspace_id)
+    if not workspace:
         return None
 
-    # PUBLIC ROOM
-    if not room.is_private:
+    # PUBLIC WORKSPACE
+    if not workspace.is_private:
         allowed = True
     else:
-        membership_check = await membership_repo.get_membership(db, room_id=room_id, user_id=current_user.id)
+        membership_check = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=current_user.id)
         allowed = membership_check is not None
 
     if not allowed:
         return None
 
-    members = await membership_repo.get_room_members_with_users(db, room_id=room_id)
+    members = await membership_repo.get_workspace_members_with_users(db, workspace_id=workspace_id)
 
     formatted_members = []
     for membership, user in members:
@@ -43,15 +43,15 @@ async def get_room_members(
 
 async def promote_member(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     target_user_id: int,
     current_user: User
 ):
-    current_membership = await membership_repo.get_membership(db, room_id=room_id, user_id=current_user.id)
-    if not is_room_owner(current_membership):
+    current_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=current_user.id)
+    if not is_workspace_owner(current_membership):
         return "not_owner"
 
-    target_membership = await membership_repo.get_membership(db, room_id=room_id, user_id=target_user_id)
+    target_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=target_user_id)
     if not target_membership:
         return "member_not_found"
     if target_membership.role == "owner":
@@ -66,18 +66,18 @@ async def promote_member(
 
 async def demote_member(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     target_user_id: int,
     current_user: User
 ):
-    current_membership = await membership_repo.get_membership(db, room_id=room_id, user_id=current_user.id)
-    if not is_room_owner(current_membership):
+    current_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=current_user.id)
+    if not is_workspace_owner(current_membership):
         return "not_owner"
 
     if target_user_id == current_user.id:
         return "cannot_demote_self"
 
-    target_membership = await membership_repo.get_membership(db, room_id=room_id, user_id=target_user_id)
+    target_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=target_user_id)
     if not target_membership:
         return "member_not_found"
     if target_membership.role == "owner":
@@ -92,18 +92,18 @@ async def demote_member(
 
 async def remove_member(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     target_user_id: int,
     current_user: User
 ):
-    current_membership = await membership_repo.get_membership(db, room_id=room_id, user_id=current_user.id)
-    if not is_room_admin(current_membership):
+    current_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=current_user.id)
+    if not is_workspace_admin(current_membership):
         return "not_authorized"
 
     if target_user_id == current_user.id:
         return "cannot_remove_self"
 
-    target_membership = await membership_repo.get_membership(db, room_id=room_id, user_id=target_user_id)
+    target_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=target_user_id)
     if not target_membership:
         return "member_not_found"
     if target_membership.role == "owner":

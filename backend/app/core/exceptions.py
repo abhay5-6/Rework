@@ -31,12 +31,12 @@ class UsernameAlreadyTakenException(UserAlreadyExistsException):
 
 class RoomAlreadyExistsException(DomainException):
     def __init__(self) -> None:
-        super().__init__("Room already exists")
+        super().__init__("Workspace already exists")
 
 
 class RoomNotFoundException(DomainException):
     def __init__(self) -> None:
-        super().__init__("Room not found")
+        super().__init__("Workspace not found")
 
 
 class RoomAlreadyJoinedException(DomainException):
@@ -49,14 +49,14 @@ class RoomJoinRequestPendingException(DomainException):
         super().__init__("Request already pending")
 
 
-class RoomMembershipRequiredException(DomainException):
+class WorkspaceMembershipRequiredException(DomainException):
     def __init__(self) -> None:
         super().__init__("Not a member")
 
 
 class RoomOwnerCannotLeaveException(DomainException):
     def __init__(self) -> None:
-        super().__init__("Owner cannot leave room")
+        super().__init__("Owner cannot leave workspace")
 
 
 class OrganizationMembershipRequiredException(DomainException):

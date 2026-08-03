@@ -20,11 +20,11 @@ class ErrorCode(str, Enum):
     EMAIL_NOT_VERIFIED = "email_not_verified"
     WEAK_PASSWORD = "weak_password"
     
-    # Room errors
-    ROOM_NOT_FOUND = "room_not_found"
-    ROOM_ALREADY_EXISTS = "room_already_exists"
-    NOT_ROOM_MEMBER = "not_room_member"
-    NOT_ROOM_OWNER = "not_room_owner"
+    # Workspace errors
+    WORKSPACE_NOT_FOUND = "workspace_not_found"
+    WORKSPACE_ALREADY_EXISTS = "workspace_already_exists"
+    NOT_WORKSPACE_MEMBER = "not_workspace_member"
+    NOT_WORKSPACE_OWNER = "not_workspace_owner"
     
     # Validation errors
     INVALID_INPUT = "invalid_input"

@@ -23,7 +23,7 @@ from app.services.ai.memory_summary_service import (
     generate_memory_summary
 )
 
-from app.services.message_service import has_room_access
+from app.services.message_service import has_workspace_access
 from app.schemas.common import MemorySummaryResponse
 
 router = APIRouter(
@@ -32,13 +32,13 @@ router = APIRouter(
 )
 
 
-@router.get("/summary/{room_id}", response_model=MemorySummaryResponse)
+@router.get("/summary/{workspace_id}", response_model=MemorySummaryResponse)
 @limiter.limit(settings.ai_rate_limit)
 
-async def summarize_room_memory(
+async def summarize_workspace_memory(
     request: Request,
 
-    room_id: int,
+    workspace_id: int,
 
     query: str,
 
@@ -49,17 +49,17 @@ async def summarize_room_memory(
     )
 ):
 
-    # Verify user has access to room
-    has_access = await has_room_access(
+    # Verify user has access to workspace
+    has_access = await has_workspace_access(
         db,
-        room_id,
+        workspace_id,
         current_user
     )
 
     if not has_access:
         raise HTTPException(
             status_code=403,
-            detail="Access denied to this room"
+            detail="Access denied to this workspace"
         )
 
     summary = await (
@@ -67,7 +67,7 @@ async def summarize_room_memory(
 
             db,
 
-            room_id,
+            workspace_id,
 
             query,
 

@@ -6,12 +6,12 @@ from app.models.memory_edge import (
     MemoryEdge
 )
 
-from app.models.room_memory import (
-    RoomMemory
+from app.models.workspace_memory import (
+    WorkspaceMemory
 )
 
 from app.services.ai.retrieval_service import (
-    search_room_memories
+    search_workspace_memories
 )
 
 logger = logging.getLogger(__name__)
@@ -21,19 +21,19 @@ async def graph_enhanced_retrieval(
 
     db,
 
-    room_id: int,
+    workspace_id: int,
 
     query: str,
 
     top_k: int = 5
 ):
-    logger.debug("graph_enhanced_retrieval_started", extra={"room_id": room_id, "query": query})
+    logger.debug("graph_enhanced_retrieval_started", extra={"workspace_id": workspace_id, "query": query})
     primary_memories = await (
-        search_room_memories(
+        search_workspace_memories(
 
             db,
 
-            room_id,
+            workspace_id,
 
             query,
 
@@ -70,10 +70,10 @@ async def graph_enhanced_retrieval(
             related_result = (
                 await db.execute(
 
-                    select(RoomMemory)
+                    select(WorkspaceMemory)
 
                     .where(
-                        RoomMemory.id
+                        WorkspaceMemory.id
                         == edge.target_memory_id
                     )
                 )

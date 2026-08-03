@@ -13,10 +13,10 @@ from app.repositories.membership_repository import membership_repo
 
 async def create_join_request(
     db: AsyncSession,
-    room_id: int,
+    workspace_id: int,
     user_id: int,
 ) -> str:
-    existing_request = await join_request_repo.get_join_request(db, room_id=room_id, user_id=user_id)
+    existing_request = await join_request_repo.get_join_request(db, workspace_id=workspace_id, user_id=user_id)
     if existing_request:
         raise RoomJoinRequestPendingException()
 
@@ -24,7 +24,7 @@ async def create_join_request(
         db,
         obj_in={
             "user_id": user_id,
-            "room_id": room_id,
+            "workspace_id": workspace_id,
             "status": "pending"
         }
     )
@@ -36,19 +36,19 @@ async def get_pending_requests(
     current_user: User
 ):
     owner_memberships = await membership_repo.get_user_memberships_by_role(db, user_id=current_user.id, role="owner")
-    owned_room_ids = [m.room_id for m in owner_memberships]
+    owned_workspace_ids = [m.workspace_id for m in owner_memberships]
 
-    if not owned_room_ids:
+    if not owned_workspace_ids:
         return []
 
-    requests = await join_request_repo.get_pending_requests_with_details(db, owned_room_ids=owned_room_ids)
+    requests = await join_request_repo.get_pending_requests_with_details(db, owned_workspace_ids=owned_workspace_ids)
 
     formatted_requests = []
-    for request, room, user in requests:
+    for request, workspace, user in requests:
         formatted_requests.append({
             "request_id": request.id,
-            "room_id": room.id,
-            "room_name": room.name,
+            "workspace_id": workspace.id,
+            "workspace_name": workspace.name,
             "user_id": user.id,
             "username": user.username,
             "status": request.status
@@ -66,11 +66,11 @@ async def approve_join_request(
     if not join_request:
         raise JoinRequestNotFoundException()
 
-    membership = await membership_repo.get_membership(db, room_id=join_request.room_id, user_id=current_user.id)
+    membership = await membership_repo.get_membership(db, workspace_id=join_request.workspace_id, user_id=current_user.id)
     if not membership or membership.role != "owner":
         raise RoomOwnerRequiredException("Not authorized")
 
-    existing_member = await membership_repo.get_membership(db, room_id=join_request.room_id, user_id=join_request.user_id)
+    existing_member = await membership_repo.get_membership(db, workspace_id=join_request.workspace_id, user_id=join_request.user_id)
     if existing_member:
         raise AlreadyMemberException()
 
@@ -78,7 +78,7 @@ async def approve_join_request(
         db,
         obj_in={
             "user_id": join_request.user_id,
-            "room_id": join_request.room_id,
+            "workspace_id": join_request.workspace_id,
             "role": "member"
         }
     )
@@ -97,7 +97,7 @@ async def reject_join_request(
     if not join_request:
         raise JoinRequestNotFoundException()
 
-    membership = await membership_repo.get_membership(db, room_id=join_request.room_id, user_id=current_user.id)
+    membership = await membership_repo.get_membership(db, workspace_id=join_request.workspace_id, user_id=current_user.id)
     if not membership or membership.role != "owner":
         raise RoomOwnerRequiredException("Not authorized")
 
