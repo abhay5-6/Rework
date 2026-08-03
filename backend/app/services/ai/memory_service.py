@@ -1,85 +1,49 @@
-from sqlalchemy.ext.asyncio import (
-    AsyncSession
-)
-
-from app.models.room_memory import (
-    RoomMemory
-)
-from app.models.user import User
-from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
+
+from app.models.user import User
+from app.repositories.memory_repository import memory_repo
 
 
 async def create_room_memory(
-
     db: AsyncSession,
-
     room_id: int,
-
     created_by: int,
-
     content: str,
-
     embedding: list[float],
-
     memory_type: str = "note",
-
     source_type: str = "message",
-
     source_id: int | None = None,
-
     importance_score: int = 1,
-
     tags: list[str] | None = None,
-
     domain: str = "general",
 ):
-
     if tags is None:
         tags = []
 
-    memory = RoomMemory(
-
-        room_id=room_id,
-
-        created_by=created_by,
-
-        content=content,
-
-        memory_type=memory_type,
-
-        source_type=source_type,
-
-        source_id=source_id,
-
-        importance_score=importance_score,
-
-        access_count=0,
-
-        tags=tags,
-
-        embedding=embedding,
-
-        domain=domain,
+    memory = await memory_repo.create(
+        db,
+        obj_in={
+            "room_id": room_id,
+            "created_by": created_by,
+            "content": content,
+            "memory_type": memory_type,
+            "source_type": source_type,
+            "source_id": source_id,
+            "importance_score": importance_score,
+            "access_count": 0,
+            "tags": tags,
+            "embedding": embedding,
+            "domain": domain,
+        }
     )
-
-    db.add(memory)
-
-    await db.flush()
-
-    await db.refresh(memory)
-
     return memory
+
 
 async def get_stale_memories(db: AsyncSession, room_id: int, days_old: int = 30):
     threshold_date = datetime.now(timezone.utc) - timedelta(days=days_old)
-    query = select(RoomMemory).where(
-        RoomMemory.room_id == room_id,
-        RoomMemory.last_reinforced_at < threshold_date
-    ).order_by(RoomMemory.last_reinforced_at.asc())
-    
-    result = await db.execute(query)
-    return result.scalars().all()
+    memories = await memory_repo.get_stale_memories(db, room_id=room_id, threshold_date=threshold_date)
+    return memories
 
 
 async def get_room_memories(
@@ -87,18 +51,10 @@ async def get_room_memories(
     room_id: int,
     limit: int = 20
 ):
-    query = (
-        select(RoomMemory, User.username)
-        .join(User, RoomMemory.created_by == User.id)
-        .where(RoomMemory.room_id == room_id)
-        .order_by(RoomMemory.created_at.desc())
-        .limit(limit)
-    )
-
-    result = await db.execute(query)
+    result = await memory_repo.get_memories_for_room_with_users(db, room_id=room_id, limit=limit)
 
     memories = []
-    for memory, creator_username in result.all():
+    for memory, creator_username in result:
         memories.append({
             "id": memory.id,
             "room_id": memory.room_id,
@@ -115,20 +71,15 @@ async def get_room_memories(
             "last_reinforced_at": memory.last_reinforced_at,
             "creator_username": creator_username,
         })
-
     return memories
+
 
 async def reinforce_memory(
     db: AsyncSession,
     room_id: int,
     memory_id: int
 ):
-    query = select(RoomMemory).where(
-        RoomMemory.id == memory_id,
-        RoomMemory.room_id == room_id
-    )
-    result = await db.execute(query)
-    memory = result.scalars().first()
+    memory = await memory_repo.get_memory_in_room(db, room_id=room_id, memory_id=memory_id)
     if memory:
         memory.last_reinforced_at = datetime.now(timezone.utc)
         memory.confidence_score = min(1.0, memory.confidence_score + 0.2)
@@ -145,13 +96,7 @@ async def update_memory(
     importance_score: int | None = None,
     tags: list[str] | None = None,
 ):
-    query = select(RoomMemory).where(
-        RoomMemory.id == memory_id,
-        RoomMemory.room_id == room_id
-    )
-    result = await db.execute(query)
-    memory = result.scalars().first()
-
+    memory = await memory_repo.get_memory_in_room(db, room_id=room_id, memory_id=memory_id)
     if not memory:
         return None
 
@@ -170,19 +115,14 @@ async def update_memory(
     await db.refresh(memory)
     return memory
 
+
 async def delete_memory(
     db: AsyncSession,
     room_id: int,
     memory_id: int
 ):
-    query = select(RoomMemory).where(
-        RoomMemory.id == memory_id,
-        RoomMemory.room_id == room_id
-    )
-    result = await db.execute(query)
-    memory = result.scalars().first()
+    memory = await memory_repo.get_memory_in_room(db, room_id=room_id, memory_id=memory_id)
     if memory:
-        await db.delete(memory)
-        await db.commit()
+        await memory_repo.remove(db, id=memory.id)
         return True
     return False
