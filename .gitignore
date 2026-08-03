@@ -47,3 +47,5 @@ _wheelcheck/
 # Documentation and artifacts
 *.md
 !README.md
+!CONTRIBUTING.md
+!.agents/AGENTS.md
