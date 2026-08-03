@@ -11,6 +11,7 @@ class JSONFormatter(logging.Formatter):
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
+        }
         # Standard LogRecord attributes to ignore
         standard_attrs = {
             "args", "asctime", "created", "exc_info", "exc_text", "filename",
