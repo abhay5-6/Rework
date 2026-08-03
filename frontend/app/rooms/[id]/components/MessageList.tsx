@@ -20,7 +20,7 @@ interface MessageListProps {
   messages: Message[];
   currentUsername: string | null;
   onSaveMemory: (message: Message) => void;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   apiUrl: string;
 }
 
@@ -124,7 +124,7 @@ export default function MessageList({
                     {content}
                   </div>
 
-                  {msg.extra_data?.file_url && (
+                  {msg.extra_data && typeof msg.extra_data.file_url === "string" && (
                     <div className="mt-3">
                       {isVideo ? (
                         <div className="overflow-hidden rounded-lg border border-border bg-black/90 shadow-md">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
@@ -16,13 +16,13 @@ import KanbanBoard from "@/components/tasks/KanbanBoard";
 import VideoGrid from "@/components/video/VideoGrid";
 
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useRoomSocket } from "@/hooks/useRoomSocket";
 import { isAuthenticated } from "@/lib/auth";
 import { getMe } from "@/lib/api/auth";
 import { getRoom, getRoomMembers } from "@/lib/api/rooms";
 import { getRoomDesks } from "@/lib/api/desks";
 import { getCollaborators } from "@/lib/api/collaborators";
 import { getMessages } from "@/lib/api/messages";
-import { createChatSocket } from "@/lib/websocket/chat";
 
 import { useAuthStore } from "@/lib/store/authStore";
 import { useRoomStore } from "@/lib/store/roomStore";
@@ -36,14 +36,13 @@ export default function RoomPage() {
 
   // Stores
   const { user, setUser } = useAuthStore();
-  const { room, setRoom, messages, setMessages, addMessage, setDesks, activeDeskId, setActiveDeskId } = useRoomStore();
-  const { socket, isConnected, setSocket, setIsConnected } = useSocketStore();
-  const { queue, removeMessage, incrementRetry } = useQueueStore();
+  const { room, setRoom, messages, setMessages, setDesks, activeDeskId, setActiveDeskId } = useRoomStore();
+  const { socket, isConnected } = useSocketStore();
+  const { queue, incrementRetry } = useQueueStore();
 
   // Local state
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<{ user_id: number; username: string; role?: string }[]>([]);
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [collaborators, setCollaborators] = useState<number[]>([]);
 
@@ -51,12 +50,10 @@ export default function RoomPage() {
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [parseWithAI, setParseWithAI] = useState(true);
-  const [typingUser, setTypingUser] = useState("");
-  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
 
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectAttemptsRef = useRef(0);
 
+  // WebRTC
   const {
     localStream,
     remoteStreams,
@@ -66,11 +63,13 @@ export default function RoomPage() {
     handleSignalingData,
   } = useWebRTC(roomId, user?.username || "", socketRef);
 
-  const handleSignalingDataRef = useRef(handleSignalingData);
-
-  useEffect(() => {
-    handleSignalingDataRef.current = handleSignalingData;
-  }, [handleSignalingData]);
+  // WebSocket
+  const {
+    connectionStatus,
+    onlineUsers,
+    typingUser,
+    sendTypingEvent
+  } = useRoomSocket(roomId, handleSignalingData, socketRef);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -178,113 +177,6 @@ export default function RoomPage() {
       loadMembers();
     }
   }, [roomId, user?.username]);
-
-  useEffect(() => {
-    if (!roomId) return;
-    let reconnectTimeout: NodeJS.Timeout;
-    let isMounted = true;
-    const maxReconnects = 5;
-
-    let pingInterval: NodeJS.Timeout;
-
-    function cleanupSocket() {
-      clearInterval(pingInterval);
-      if (!socketRef.current) return;
-      socketRef.current.onopen = null;
-      socketRef.current.onclose = null;
-      socketRef.current.onerror = null;
-      socketRef.current.onmessage = null;
-      socketRef.current.close();
-      socketRef.current = null;
-      setSocket(null);
-      setIsConnected(false);
-    }
-
-    function connectSocket() {
-      if (!isMounted) return;
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (!token) {
-        setConnectionStatus("Unauthorized");
-        return;
-      }
-      if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
-        return;
-      }
-
-      cleanupSocket();
-      setConnectionStatus("Connecting...");
-
-      const ws = createChatSocket(roomId);
-      socketRef.current = ws;
-      setSocket(ws);
-
-      ws.onopen = () => {
-        reconnectAttemptsRef.current = 0;
-        setConnectionStatus("Connected");
-        setIsConnected(true);
-        pingInterval = setInterval(() => {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "ping" }));
-          }
-        }, 20000);
-      };
-
-      ws.onclose = (event) => {
-        cleanupSocket();
-        if (!isMounted) return;
-        if (event.code === 1008) {
-          setConnectionStatus("Unauthorized");
-          return;
-        }
-        if (reconnectAttemptsRef.current >= maxReconnects) {
-          setConnectionStatus("Connection Failed");
-          return;
-        }
-        reconnectAttemptsRef.current++;
-        setConnectionStatus("Disconnected");
-        reconnectTimeout = setTimeout(connectSocket, 3000);
-      };
-
-      ws.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
-
-        if (payload.type.startsWith("webrtc") || payload.type === "join_call" || payload.type === "leave_call") {
-          handleSignalingDataRef.current(payload);
-        } else if (payload.type === "task_created" || payload.type === "task_updated") {
-          window.dispatchEvent(new CustomEvent("task_update", { detail: payload }));
-        } else if (payload.type === "chat_message") {
-          addMessage(payload.data);
-          if (payload.data.temp_id) {
-            removeMessage(payload.data.temp_id);
-          }
-        }
-
-        if (payload.type === "online_users") {
-          setOnlineUsers(payload.data.users);
-        }
-
-        if (payload.type === "typing") {
-          setTypingUser(payload.data.username);
-          setTimeout(() => setTypingUser(""), 1500);
-        }
-      };
-    }
-
-    connectSocket();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(reconnectTimeout);
-      clearInterval(pingInterval);
-      cleanupSocket();
-    };
-  }, [roomId]);
-
-  function sendTypingEvent() {
-    const ws = socketRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({ type: "typing" }));
-  }
 
   if (loading || !room) {
     return (

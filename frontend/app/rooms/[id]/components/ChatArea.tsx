@@ -42,7 +42,7 @@ export default function ChatArea({
   const [input, setInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { socket } = useSocketStore();
   const { queue, addMessage } = useQueueStore();
   const fileInputRef = useRef<HTMLInputElement>(null);

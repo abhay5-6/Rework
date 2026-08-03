@@ -8,7 +8,7 @@ interface MessageInputProps {
   setSelectedFile: (file: File | null) => void;
   uploadProgress: number;
   setUploadProgress: (val: number) => void;
-  fileInputRef: RefObject<HTMLInputElement>;
+  fileInputRef: RefObject<HTMLInputElement | null>;
   typingUser: string;
   sendTypingEvent: () => void;
   aiEnabled: boolean;
