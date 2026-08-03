@@ -128,6 +128,7 @@ async def request_context_middleware(
 from app.routes.tasks import router as tasks_router
 from app.routes.organization import router as org_router
 from app.routes.channel import router as channel_router
+from app.routes.admin import router as admin_router
 
 app.include_router(auth_router)
 app.include_router(rooms_router)
@@ -143,6 +144,7 @@ app.include_router(files.router)
 app.include_router(tasks_router)
 app.include_router(org_router, prefix="/orgs", tags=["Organizations"])
 app.include_router(channel_router, prefix="/channels", tags=["Channels"])
+app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

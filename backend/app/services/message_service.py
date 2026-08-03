@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 async def has_workspace_access(
     db: AsyncSession,
     workspace_id: int,
-    user: User
+    user: User,
+    channel_id: int | None = None
 ) -> bool:
     """
     Checks if a user has access to a specific workspace.
@@ -31,7 +32,16 @@ async def has_workspace_access(
         logger.warning("Workspace not found during access check", extra={"workspace_id": workspace_id, "user_id": user.id})
         return False
 
-    # PUBLIC WORKSPACE - allow access
+    # PUBLIC WORKSPACE - allow access if no channel
+    
+    if channel_id:
+        from app.utils.permissions import require_channel_access
+        try:
+            await require_channel_access(channel_id, db, user)
+            return True
+        except Exception:
+            return False
+
     if not workspace.is_private:
         return True
 
@@ -60,7 +70,7 @@ async def send_message(
     Returns:
         The created Message object, or None if the user does not have access.
     """
-    allowed = await has_workspace_access(db, workspace_id, user)
+    allowed = await has_workspace_access(db, workspace_id, user, getattr(message_data, 'channel_id', None))
     if not allowed:
         return None
 
@@ -86,17 +96,9 @@ async def get_workspace_messages(
 ):
     """
     Retrieves a paginated list of messages for a workspace.
-    
-    Args:
-        db: Database session.
-        workspace_id: ID of the workspace.
-        user: The user requesting the messages.
-        limit: Maximum number of messages to return.
-        offset: Number of messages to skip.
-        
-    Returns:
-        A list of formatted message dictionaries, oldest first, or None if access is denied.
     """
+    # Note: this API gets all workspace messages, if we want channel specific, we'd need another endpoint
+    # For now just checking workspace access is fine
     allowed = await has_workspace_access(db, workspace_id, user)
     if not allowed:
         return None
@@ -136,20 +138,9 @@ async def create_realtime_message(
 ):
     """
     Creates a new message originating from a WebSocket connection or AI system.
-    
-    Args:
-        db: Database session.
-        workspace_id: ID of the workspace.
-        user: The user sending the message, or None if sent by the AI.
-        content: The text content of the message.
-        extra_data: Optional dictionary containing file attachments or AI metadata.
-        channel_id: Optional channel ID to scope the message.
-        
-    Returns:
-        The created Message object, or None if the user does not have access.
     """
     if user is not None:
-        allowed = await has_workspace_access(db, workspace_id, user)
+        allowed = await has_workspace_access(db, workspace_id, user, channel_id)
         if not allowed:
             logger.warning("WebSocket message creation denied", extra={"workspace_id": workspace_id, "user_id": user.id})
             return None

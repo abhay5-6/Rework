@@ -69,3 +69,16 @@ async def get_org_members(db: AsyncSession, org_id: int, user_id: int):
             "username": row.username
         })
     return members
+
+from app.schemas.org import OrgUpdate
+async def update_organization(db: AsyncSession, org_id: int, org_in: OrgUpdate) -> Organization:
+    org = await org_repo.get(db, id=org_id)
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found"
+        )
+        
+    update_data = org_in.model_dump(exclude_unset=True)
+    org = await org_repo.update(db, db_obj=org, obj_in=update_data)
+    return org

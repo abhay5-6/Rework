@@ -9,6 +9,18 @@ from app.core.dependencies import get_current_user
 from app.models.user import User
 
 router = APIRouter()
+from app.schemas.org import OrgUpdate
+
+@router.patch("/{org_id}", response_model=OrganizationSchema)
+async def update_org(
+    org_id: int,
+    org_in: OrgUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.utils.permissions import require_org_admin
+    await require_org_admin(org_id, db, current_user)
+    return await org_service.update_organization(db, org_id, org_in)
 
 @router.post("/", response_model=OrganizationSchema)
 async def create_org(
