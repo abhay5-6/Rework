@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, DateTime, ForeignKey
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 
@@ -18,6 +18,18 @@ class Organization(Base):
     created_by: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("users.id"),
+        nullable=False
+    )
+
+    allow_private_channels: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    allow_public_workspaces: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
         nullable=False
     )
 

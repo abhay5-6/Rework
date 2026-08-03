@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Index
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Index, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime, timezone
 
@@ -21,6 +21,12 @@ class Channel(Base):
     description: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True
+    )
+
+    is_private: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False
     )
 
     workspace_id: Mapped[int] = mapped_column(

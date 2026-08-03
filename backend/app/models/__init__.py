@@ -1,6 +1,6 @@
 from app.models.user import User
 from app.models.workspace import Workspace
-from app.models.membership import WorkspaceMembership
+from app.models.membership import WorkspaceMembership, ChannelMembership
 from app.models.message import Message
 from app.models.workspace_memory import WorkspaceMemory
 from app.models.memory_edge import MemoryEdge

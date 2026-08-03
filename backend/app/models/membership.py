@@ -42,4 +42,33 @@ class WorkspaceMembership(Base):
         DateTime,
         default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
-    
+
+class ChannelMembership(Base):
+    __tablename__ = "channel_memberships"
+    __table_args__ = (
+        Index("ix_channel_membership_user_id", "user_id"),
+        Index("ix_channel_membership_channel_id", "channel_id"),
+        Index("ix_channel_membership_user_channel", "user_id", "channel_id"),
+    )
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id")
+    )
+
+    channel_id: Mapped[int] = mapped_column(
+        ForeignKey("channels.id")
+    )    
+
+    role: Mapped[str] = mapped_column(
+        String(20),
+        default="member"
+    )
+
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
