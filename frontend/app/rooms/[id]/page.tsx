@@ -138,8 +138,12 @@ export default function RoomPage() {
     loadCollaborators();
   }, []);
 
+  const hasFlushedRef = useRef(false);
+
   useEffect(() => {
     if (isConnected && socket && socket.readyState === WebSocket.OPEN && queue.length > 0) {
+      if (hasFlushedRef.current) return;
+      
       const pendingForThisRoom = queue.filter(q => q.room_id === roomId);
       for (const msg of pendingForThisRoom) {
         try {
@@ -152,13 +156,15 @@ export default function RoomPage() {
               extra_data: msg.extra_data || {},
             })
           );
-          incrementRetry(msg.temp_id);
         } catch (error) {
           console.error("Failed to flush queued message", error);
         }
       }
+      hasFlushedRef.current = true;
+    } else if (!isConnected) {
+      hasFlushedRef.current = false;
     }
-  }, [isConnected, socket, queue, roomId, incrementRetry]);
+  }, [isConnected, socket, queue.length, roomId]);
 
   useEffect(() => {
     async function loadMembers() {

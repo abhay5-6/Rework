@@ -20,6 +20,7 @@ from app.core.exceptions import (
     RoomNotFoundException,
     RoomOwnerCannotLeaveException,
     RoomOwnerRequiredException,
+    OrganizationMembershipRequiredException,
 )
 
 
@@ -33,7 +34,7 @@ async def create_room(
             db, org_id=room_data.organization_id, user_id=creator.id
         )
         if not org_mem:
-            raise RoomAlreadyExistsException()
+            raise OrganizationMembershipRequiredException()
 
     # Check for existing room
     query = select(Room).where(Room.name == room_data.name)

@@ -44,3 +44,6 @@ backend/uploads/
 # Wheel files
 _wheelcheck/
 *.whl
+# Documentation and artifacts
+*.md
+!README.md

@@ -59,6 +59,11 @@ class RoomOwnerCannotLeaveException(DomainException):
         super().__init__("Owner cannot leave room")
 
 
+class OrganizationMembershipRequiredException(DomainException):
+    def __init__(self) -> None:
+        super().__init__("Organization membership required")
+
+
 class RoomOwnerRequiredException(DomainException):
     def __init__(self, message: str = "Not authorized") -> None:
         super().__init__(message)

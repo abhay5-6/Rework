@@ -10,7 +10,8 @@ export function useRoomSocket(
   socketRef: React.MutableRefObject<WebSocket | null>
 ) {
   const { socket, isConnected, setSocket, setIsConnected } = useSocketStore();
-  const { addMessage, removeMessage } = useQueueStore();
+  const { removeMessage } = useQueueStore();
+  const { addMessage: addRoomMessage } = useRoomStore();
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [typingUser, setTypingUser] = useState("");
   const [connectionStatus, setConnectionStatus] = useState("Connecting...");
@@ -98,7 +99,7 @@ export function useRoomSocket(
         } else if (payload.type === "task_created" || payload.type === "task_updated") {
           window.dispatchEvent(new CustomEvent("task_update", { detail: payload }));
         } else if (payload.type === "chat_message") {
-          addMessage(payload.data);
+          addRoomMessage(payload.data);
           if (payload.data.temp_id) {
             removeMessage(payload.data.temp_id);
           }
@@ -123,7 +124,7 @@ export function useRoomSocket(
       clearInterval(pingInterval);
       cleanupSocket();
     };
-  }, [roomId, setSocket, setIsConnected, addMessage, removeMessage]);
+  }, [roomId, setSocket, setIsConnected, addRoomMessage, removeMessage]);
 
   const sendTypingEvent = useCallback(() => {
     const ws = socketRef.current;

@@ -71,8 +71,8 @@ export default function MessageList({
 
           return (
             <div
-              id={`message-${msg.id}`}
-              key={`${msg.id}-${index}`}
+              id={`message-${msg.temp_id || msg.id}`}
+              key={msg.temp_id ? `temp-${msg.temp_id}` : `${msg.id}-${index}`}
               className={`scroll-mt-24 flex gap-3 py-1 ${
                 mine ? "justify-end" : "justify-start"
               }`}

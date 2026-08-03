@@ -5,6 +5,7 @@ from pydantic import BaseModel, field_validator
 
 class MessageCreate(BaseModel):
     content: str
+    desk_id: int | None = None
 
 
 class MessageResponse(BaseModel):

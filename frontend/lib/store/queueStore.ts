@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+
 
 /** Represents an offline message queued for WebSocket auto-flushing upon reconnection */
 export interface QueuedMessage {
@@ -24,31 +24,24 @@ interface QueueState {
  * Zustand store for persisting offline messages in localStorage.
  * Automatically flushes messages when WebSocket connection re-establishes.
  */
-export const useQueueStore = create<QueueState>()(
-  persist(
-    (set) => ({
-      queue: [],
-      addMessage: (msg) =>
-        set((state) => ({ queue: [...state.queue, msg] })),
-      removeMessage: (temp_id) =>
-        set((state) => ({
-          queue: state.queue.filter((m) => m.temp_id !== temp_id),
-        })),
-      incrementRetry: (temp_id) =>
-        set((state) => ({
-          queue: state.queue.map((m) =>
-            m.temp_id === temp_id ? { ...m, retry_count: m.retry_count + 1 } : m
-          ),
-        })),
-      clearQueue: (room_id) =>
-        set((state) => ({
-          queue: room_id
-            ? state.queue.filter((m) => m.room_id !== room_id)
-            : [],
-        })),
-    }),
-    {
-      name: "offline-queue",
-    }
-  )
-);
+export const useQueueStore = create<QueueState>((set) => ({
+  queue: [],
+  addMessage: (msg) =>
+    set((state) => ({ queue: [...state.queue, msg] })),
+  removeMessage: (temp_id) =>
+    set((state) => ({
+      queue: state.queue.filter((m) => m.temp_id !== temp_id),
+    })),
+  incrementRetry: (temp_id) =>
+    set((state) => ({
+      queue: state.queue.map((m) =>
+        m.temp_id === temp_id ? { ...m, retry_count: m.retry_count + 1 } : m
+      ),
+    })),
+  clearQueue: (room_id) =>
+    set((state) => ({
+      queue: room_id
+        ? state.queue.filter((m) => m.room_id !== room_id)
+        : [],
+    })),
+}));
