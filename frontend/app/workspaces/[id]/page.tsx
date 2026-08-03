@@ -38,7 +38,7 @@ export default function RoomPage() {
   const { user, setUser } = useAuthStore();
   const { workspace, setRoom, messages, setMessages, setDesks, activeDeskId, setActiveDeskId } = useWorkspaceStore();
   const { socket, isConnected } = useSocketStore();
-  const { queue, incrementRetry } = useQueueStore();
+  const { queue } = useQueueStore();
 
   // Local state
   const [loading, setLoading] = useState(true);
@@ -164,7 +164,7 @@ export default function RoomPage() {
     } else if (!isConnected) {
       hasFlushedRef.current = false;
     }
-  }, [isConnected, socket, queue.length, roomId]);
+  }, [isConnected, socket, queue, roomId]);
 
   useEffect(() => {
     async function loadMembers() {
