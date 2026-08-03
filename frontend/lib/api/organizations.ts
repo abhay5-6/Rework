@@ -5,6 +5,8 @@ export interface Organization {
   name: string;
   created_by: number;
   created_at: string;
+  allow_private_channels: boolean;
+  allow_public_workspaces: boolean;
 }
 
 export interface OrgMember {
@@ -31,5 +33,10 @@ export async function getOrganization(orgId: number): Promise<Organization> {
 
 export async function getOrgMembers(orgId: number): Promise<OrgMember[]> {
   const response = await api.get(`/orgs/${orgId}/members`);
+  return response.data;
+}
+
+export async function updateOrganization(orgId: number, data: Partial<Organization>): Promise<Organization> {
+  const response = await api.patch(`/orgs/${orgId}`, data);
   return response.data;
 }

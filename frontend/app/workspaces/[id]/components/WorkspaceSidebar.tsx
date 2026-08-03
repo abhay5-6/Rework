@@ -1,8 +1,8 @@
 import { useState } from "react";
 import Link from "next/link";
-import { Network, Lock, Hash, Search, Bot, Plus, X, CheckCircle2, Sparkles, PanelRightOpen } from "lucide-react";
+import { Network, Lock, Hash, Search, Bot, Plus, X, CheckCircle2, Sparkles, PanelRightOpen, Shield } from "lucide-react";
 import { useWorkspaceStore, Workspace } from "@/lib/store/workspaceStore";
-import { createDesk } from "@/lib/api/channels";
+import { createChannel } from "@/lib/api/channels";
 import { toast } from "sonner";
 
 const defaultTools = [
@@ -27,6 +27,7 @@ export default function WorkspaceSidebar({
   const { channels, setDesks, activeDeskId, setActiveDeskId } = useWorkspaceStore();
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
+  const [isPrivateChannel, setIsPrivateChannel] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleCreateChannel(e: React.FormEvent) {
@@ -35,15 +36,16 @@ export default function WorkspaceSidebar({
 
     try {
       setLoading(true);
-      const createdDesk = await createDesk(newChannelName.trim(), workspace.id);
-      setDesks([...channels, createdDesk]);
-      setActiveDeskId(createdDesk.id);
+      const createdChannel = await createChannel(newChannelName.trim(), workspace.id, isPrivateChannel);
+      setDesks([...channels, createdChannel]);
+      setActiveDeskId(createdChannel.id);
       setNewChannelName("");
+      setIsPrivateChannel(false);
       setIsCreatingChannel(false);
-      toast.success(`Channel #${createdDesk.name} created`);
-    } catch (error) {
+      toast.success(`Channel #${createdChannel.name} created`);
+    } catch (error: any) {
       console.error(error);
-      toast.error("Failed to create channel");
+      toast.error(error.response?.data?.detail || "Failed to create channel");
     } finally {
       setLoading(false);
     }
@@ -94,24 +96,38 @@ export default function WorkspaceSidebar({
 
         {isCreatingChannel && (
           <form onSubmit={handleCreateChannel} className="mb-2 px-1">
-            <div className="flex items-center gap-1 rounded-md border border-border bg-background p-1">
-              <Hash size={14} className="text-muted-foreground ml-1" />
-              <input
-                type="text"
-                value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value)}
-                placeholder="channel-name"
-                className="w-full bg-transparent text-xs outline-none"
-                autoFocus
-                disabled={loading}
-              />
-              <button
-                type="submit"
-                disabled={loading || !newChannelName.trim()}
-                className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                Add
-              </button>
+            <div className="flex flex-col gap-2 rounded-md border border-border bg-background p-2">
+              <div className="flex items-center gap-1 border-b border-border pb-1">
+                <Hash size={14} className="text-muted-foreground ml-1" />
+                <input
+                  type="text"
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  placeholder="channel-name"
+                  className="w-full bg-transparent text-xs outline-none"
+                  autoFocus
+                  disabled={loading}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isPrivateChannel}
+                    onChange={(e) => setIsPrivateChannel(e.target.checked)}
+                    className="rounded border-border bg-background text-primary focus:ring-primary"
+                  />
+                  <Lock size={10} />
+                  Private Channel
+                </label>
+                <button
+                  type="submit"
+                  disabled={loading || !newChannelName.trim()}
+                  className="rounded bg-primary px-3 py-1 text-[10px] font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  Create
+                </button>
+              </div>
             </div>
           </form>
         )}
