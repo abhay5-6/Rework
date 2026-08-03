@@ -2,14 +2,15 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-class DeskBase(BaseModel):
+class ChannelBase(BaseModel):
     name: str
     description: Optional[str] = None
+    is_private: bool = False
 
-class DeskCreate(DeskBase):
+class ChannelCreate(ChannelBase):
     workspace_id: int
 
-class DeskSchema(DeskBase):
+class ChannelSchema(ChannelBase):
     id: int
     workspace_id: int
     created_at: datetime

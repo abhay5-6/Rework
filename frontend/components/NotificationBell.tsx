@@ -7,11 +7,11 @@ import { useNotifications } from "@/hooks/useNotifications";
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const {
-    roomRequests,
+    workspaceRequests,
     collaborationRequests,
     totalNotifications,
-    handleApproveRoom,
-    handleRejectRoom,
+    handleApproveWorkspace,
+    handleRejectWorkspace,
     handleAcceptCollaboration,
     handleRejectCollaboration
   } = useNotifications();
@@ -43,12 +43,12 @@ export default function NotificationBell() {
           ) : (
             <div className="max-h-[500px] overflow-y-auto">
               {/* WORKSPACE REQUESTS */}
-              {roomRequests.length > 0 && (
+              {workspaceRequests.length > 0 && (
                 <div className="border-b border-border">
                   <div className="px-4 py-3 text-sm font-semibold text-muted-foreground uppercase">
                     Workspace Requests
                   </div>
-                  {roomRequests.map((request) => (
+                  {workspaceRequests.map((request) => (
                     <div
                       key={request.request_id}
                       className="p-4 border-t border-border"
@@ -64,13 +64,13 @@ export default function NotificationBell() {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleApproveRoom(request.request_id)}
+                          onClick={() => handleApproveWorkspace(request.request_id)}
                           className="flex-1 bg-green-600 hover:bg-green-700 transition rounded-lg py-2 font-semibold"
                         >
                           Approve
                         </button>
                         <button
-                          onClick={() => handleRejectRoom(request.request_id)}
+                          onClick={() => handleRejectWorkspace(request.request_id)}
                           className="flex-1 bg-red-600 hover:bg-red-700 transition rounded-lg py-2 font-semibold"
                         >
                           Reject

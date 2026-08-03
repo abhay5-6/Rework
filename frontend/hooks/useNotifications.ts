@@ -26,14 +26,14 @@ export type CollaborationRequest = {
 };
 
 export function useNotifications() {
-  const [roomRequests, setRoomRequests] = useState<JoinRequest[]>([]);
+  const [workspaceRequests, setWorkspaceRequests] = useState<JoinRequest[]>([]);
   const [collaborationRequests, setCollaborationRequests] = useState<CollaborationRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function fetchNotifications() {
     try {
-      const roomData = await getJoinRequests();
-      setRoomRequests(roomData);
+      const workspaceData = await getJoinRequests();
+      setWorkspaceRequests(workspaceData);
 
       const collaborationData = await getCollaborationRequests();
       setCollaborationRequests(collaborationData);
@@ -50,10 +50,10 @@ export function useNotifications() {
     });
   }, []);
 
-  async function handleApproveRoom(requestId: number) {
+  async function handleApproveWorkspace(requestId: number) {
     try {
       await approveJoinRequest(requestId);
-      setRoomRequests((prev) => prev.filter((r) => r.request_id !== requestId));
+      setWorkspaceRequests((prev) => prev.filter((r) => r.request_id !== requestId));
       toast.success("Request approved");
     } catch (error) {
       console.error(error);
@@ -61,10 +61,10 @@ export function useNotifications() {
     }
   }
 
-  async function handleRejectRoom(requestId: number) {
+  async function handleRejectWorkspace(requestId: number) {
     try {
       await rejectJoinRequest(requestId);
-      setRoomRequests((prev) => prev.filter((r) => r.request_id !== requestId));
+      setWorkspaceRequests((prev) => prev.filter((r) => r.request_id !== requestId));
       toast.success("Request rejected");
     } catch (error) {
       console.error(error);
@@ -94,15 +94,15 @@ export function useNotifications() {
     }
   }
 
-  const totalNotifications = roomRequests.length + collaborationRequests.length;
+  const totalNotifications = workspaceRequests.length + collaborationRequests.length;
 
   return {
-    roomRequests,
+    workspaceRequests,
     collaborationRequests,
     totalNotifications,
     loading,
-    handleApproveRoom,
-    handleRejectRoom,
+    handleApproveWorkspace,
+    handleRejectWorkspace,
     handleAcceptCollaboration,
     handleRejectCollaboration,
     refreshNotifications: fetchNotifications

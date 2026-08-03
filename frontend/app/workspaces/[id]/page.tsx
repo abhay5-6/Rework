@@ -20,7 +20,7 @@ import { useWorkspaceSocket } from "@/hooks/useWorkspaceSocket";
 import { isAuthenticated } from "@/lib/auth";
 import { getMe } from "@/lib/api/auth";
 import { getRoom, getWorkspaceMembers } from "@/lib/api/workspaces";
-import { getRoomDesks } from "@/lib/api/channels";
+import { getWorkspaceChannels } from "@/lib/api/channels";
 import { getCollaborators } from "@/lib/api/collaborators";
 import { getMessages } from "@/lib/api/messages";
 
@@ -103,7 +103,7 @@ export default function RoomPage() {
         })
         .catch(console.error);
 
-      getRoomDesks(roomId)
+      getWorkspaceChannels(roomId)
         .then((data) => {
           setDesks(data);
           if (data.length > 0 && !activeDeskId) {

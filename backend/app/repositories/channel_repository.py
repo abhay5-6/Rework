@@ -4,16 +4,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from app.models.channel import Channel
-from app.schemas.channel import DeskCreate
+from app.schemas.channel import ChannelCreate
 from app.repositories.base import BaseRepository
 
-class DeskUpdate(BaseModel):
+class ChannelUpdate(BaseModel):
     pass
 
-class DeskRepository(BaseRepository[Channel, DeskCreate, DeskUpdate]):
+class ChannelRepository(BaseRepository[Channel, ChannelCreate, ChannelUpdate]):
     async def get_channels_for_workspace(self, db: AsyncSession, *, workspace_id: int) -> List[Channel]:
         query = select(Channel).where(Channel.workspace_id == workspace_id)
         result = await db.execute(query)
         return list(result.scalars().all())
 
-channel_repo = DeskRepository(Channel)
+channel_repo = ChannelRepository(Channel)
