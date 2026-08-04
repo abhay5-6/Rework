@@ -34,6 +34,9 @@ from app.services.ai.auto_memory_service import (
 )
 from fastapi import BackgroundTasks
 
+from arq import ArqRedis
+from app.core.dependencies import get_arq_pool
+
 @router.post(
     "/{workspace_id}/messages",
     response_model=MessageResponse
@@ -47,7 +50,7 @@ async def create_message(
 
     message: MessageCreate,
 
-    background_tasks: BackgroundTasks,
+    arq_pool: ArqRedis = Depends(get_arq_pool),
 
     db: AsyncSession = Depends(get_db),
 
@@ -81,18 +84,25 @@ async def create_message(
 
     await db.commit()
 
-    background_tasks.add_task(
-
-        process_memory_background,
-
-        workspace_id,
-
-        current_user.id,
-
-        message_id=created_message.id,
-
-        message_content=created_message.content
-    )
+    if arq_pool:
+        await arq_pool.enqueue_job(
+            "run_process_memory_background",
+            workspace_id,
+            current_user.id,
+            created_message.id,
+            created_message.content
+        )
+    else:
+        # Fallback if ARQ is not running (e.g. testing)
+        import asyncio
+        asyncio.create_task(
+            process_memory_background(
+                workspace_id,
+                current_user.id,
+                message_id=created_message.id,
+                message_content=created_message.content
+            )
+        )
 
     return created_message
 @router.get(

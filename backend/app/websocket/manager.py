@@ -177,12 +177,12 @@ class ConnectionManager:
             )
         )
 
-    async def broadcast(
+    async def broadcast_local(
         self,
         workspace_id: int,
         message: dict
     ):
-
+        """Send message only to locally connected WebSockets. Called by Redis listener."""
         if workspace_id not in (
             self.active_connections
         ):
@@ -221,5 +221,20 @@ class ConnectionManager:
                 del self.active_connections[
                     workspace_id
                 ]
+
+    async def broadcast(
+        self,
+        workspace_id: int,
+        message: dict
+    ):
+        """Publish message to Redis to be distributed across all nodes."""
+        from app.websocket.redis_pubsub import redis_manager
+        
+        # Publish to Redis instead of sending locally
+        if redis_manager.redis:
+            await redis_manager.publish(workspace_id, message)
+        else:
+            # Fallback to local broadcast if Redis is not available
+            await self.broadcast_local(workspace_id, message)
 
 manager = ConnectionManager()

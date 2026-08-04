@@ -85,6 +85,8 @@ class Settings:
     github_oauth_client_secret: str | None
     oauth_state_expire_minutes: int
 
+    redis_url: str
+
 
 def load_settings() -> Settings:
 
@@ -271,6 +273,11 @@ def load_settings() -> Settings:
         oauth_state_expire_minutes=_get_int_env(
             "OAUTH_STATE_EXPIRE_MINUTES",
             10
+        ),
+        
+        redis_url=os.getenv(
+            "REDIS_URL",
+            "redis://localhost:6379/0"
         )
     )
 

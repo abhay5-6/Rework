@@ -43,11 +43,36 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.websocket.redis_pubsub import redis_manager
+    from app.websocket.manager import manager
+    from arq import create_pool
+    from app.worker import redis_settings
+    import asyncio
+
     if settings.app_env == "development":
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("development_mode: ran create_all")
+        
+    await redis_manager.connect()
+    redis_manager._listener_task = asyncio.create_task(
+        redis_manager.listen(manager.broadcast_local)
+    )
+    
+    # Initialize ARQ queue pool
+    try:
+        app.state.arq_pool = await create_pool(redis_settings)
+        logger.info("Successfully connected to ARQ Redis Pool")
+    except Exception as e:
+        logger.error(f"Failed to connect to ARQ Redis Pool: {e}. Background tasks will run synchronously.")
+        app.state.arq_pool = None
+    
     yield
+    
+    await redis_manager.disconnect()
+    
+    if hasattr(app.state, "arq_pool"):
+        await app.state.arq_pool.close()
 
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
