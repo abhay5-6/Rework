@@ -125,7 +125,6 @@ export function useWorkspaceSocket(
           } else if (payload.type === "typing") {
             setTypingUser(payload.data.username);
             setTimeout(() => setTypingUser(""), 1500);
-          }
           } else if (payload.type === "message_updated") {
             const { updateMessageStore } = useWorkspaceStore.getState();
             updateMessageStore(payload.message_id, payload.content, payload.edited_at);
