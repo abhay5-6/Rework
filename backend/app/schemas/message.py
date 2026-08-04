@@ -6,7 +6,13 @@ from pydantic import BaseModel, field_validator
 class MessageCreate(BaseModel):
     content: str
     channel_id: int | None = None
+    parent_id: int | None = None
 
+class MessageUpdate(BaseModel):
+    content: str
+
+class MessageMove(BaseModel):
+    channel_id: int
 
 class MessageResponse(BaseModel):
     id: int
@@ -14,7 +20,9 @@ class MessageResponse(BaseModel):
     sender_id: int | None
     workspace_id: int
     channel_id: int | None = None
+    parent_id: int | None = None
     created_at: datetime
+    edited_at: datetime | None = None
     username: str | None = None
     extra_data: dict[str, object] | None = None
 

@@ -126,6 +126,13 @@ export function useWorkspaceSocket(
             setTypingUser(payload.data.username);
             setTimeout(() => setTypingUser(""), 1500);
           }
+          } else if (payload.type === "message_updated") {
+            const { updateMessageStore } = useWorkspaceStore.getState();
+            updateMessageStore(payload.message_id, payload.content, payload.edited_at);
+          } else if (payload.type === "message_moved") {
+            const { moveMessageStore } = useWorkspaceStore.getState();
+            moveMessageStore(payload.message_id, payload.new_channel_id);
+          }
         } catch (error) {
           console.error(`[useWorkspaceSocket] Failed to parse incoming message in workspace ${roomId}:`, error);
         }

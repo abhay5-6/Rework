@@ -80,7 +80,8 @@ async def send_message(
             "content": message_data.content,
             "sender_id": user.id,
             "workspace_id": workspace_id,
-            "channel_id": getattr(message_data, 'channel_id', None)
+            "channel_id": getattr(message_data, 'channel_id', None),
+            "parent_id": getattr(message_data, 'parent_id', None)
         }
     )
     logger.info("Message sent via REST", extra={"message_id": message.id, "workspace_id": workspace_id, "user_id": user.id})
@@ -117,7 +118,9 @@ async def get_workspace_messages(
             "sender_id": message.sender_id,
             "workspace_id": message.workspace_id,
             "channel_id": message.channel_id,
+            "parent_id": getattr(message, 'parent_id', None),
             "created_at": message.created_at,
+            "edited_at": getattr(message, 'edited_at', None),
             "username": username if username else "Rework AI",
             "extra_data": message.extra_data
         })
@@ -152,6 +155,7 @@ async def create_realtime_message(
             "sender_id": user.id if user else None,
             "workspace_id": workspace_id,
             "channel_id": channel_id,
+            "parent_id": extra_data.get("parent_id") if extra_data else None,
             "extra_data": extra_data or {}
         }
     )
@@ -165,4 +169,75 @@ async def create_realtime_message(
             "has_extra_data": bool(extra_data)
         }
     )
+    return message
+
+
+from datetime import datetime, timezone
+
+async def update_message(
+    db: AsyncSession,
+    message_id: int,
+    user: User,
+    content: str
+):
+    message = await message_repo.get(db, id=message_id)
+    if not message:
+        return None
+
+    if message.sender_id != user.id:
+        return None # Only sender can edit
+
+    update_data = {
+        "content": content,
+        "edited_at": datetime.now(timezone.utc).replace(tzinfo=None)
+    }
+    
+    updated_message = await message_repo.update(db, db_obj=message, obj_in=update_data)
+    logger.info("Message updated", extra={"message_id": message.id, "user_id": user.id})
+    return updated_message
+
+
+from sqlalchemy import select
+
+async def move_message(
+    db: AsyncSession,
+    message_id: int,
+    user: User,
+    new_channel_id: int
+):
+    message = await message_repo.get(db, id=message_id)
+    if not message:
+        return None
+        
+    # Check access to the new channel
+    from app.utils.permissions import require_channel_access
+    try:
+        await require_channel_access(new_channel_id, db, user)
+    except Exception:
+        return None
+
+    # Check access to the old channel (must be able to access the message to move it)
+    if message.channel_id:
+        try:
+            await require_channel_access(message.channel_id, db, user)
+        except Exception:
+            return None
+    elif not await has_workspace_access(db, message.workspace_id, user):
+        return None
+
+    # Update message channel
+    message = await message_repo.update(db, db_obj=message, obj_in={"channel_id": new_channel_id})
+    logger.info("Message moved", extra={"message_id": message.id, "new_channel_id": new_channel_id, "user_id": user.id})
+
+    # Update all replies
+    from app.models.message import Message
+    result = await db.execute(select(Message).where(Message.parent_id == message_id))
+    replies = result.scalars().all()
+    
+    for reply in replies:
+        reply.channel_id = new_channel_id
+        db.add(reply)
+        
+    await db.commit()
+    
     return message

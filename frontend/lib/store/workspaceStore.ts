@@ -17,6 +17,8 @@ export interface Message {
   type?: string;
   extra_data?: Record<string, unknown>;
   channel_id?: number | null;
+  parent_id?: number | null;
+  edited_at?: string | null;
   is_pending?: boolean;
   temp_id?: string;
   retry_count?: number;
@@ -63,6 +65,8 @@ interface RoomState {
   setDesks: (channels: Channel[]) => void;
   activeDeskId: number | null;
   setActiveDeskId: (id: number | null) => void;
+  updateMessageStore: (id: number, content: string, editedAt: string | null) => void;
+  moveMessageStore: (id: number, channelId: number) => void;
 }
 
 export const useWorkspaceStore = create<RoomState>((set) => ({
@@ -83,4 +87,14 @@ export const useWorkspaceStore = create<RoomState>((set) => ({
   setDesks: (channels) => set({ channels }),
   activeDeskId: null,
   setActiveDeskId: (id) => set({ activeDeskId: id }),
+  updateMessageStore: (id, content, editedAt) => set((state) => ({
+    messages: state.messages.map(msg => 
+      msg.id === id ? { ...msg, content, message: content, edited_at: editedAt } : msg
+    )
+  })),
+  moveMessageStore: (id, channelId) => set((state) => ({
+    messages: state.messages.map(msg => 
+      msg.id === id ? { ...msg, channel_id: channelId } : msg
+    )
+  })),
 }));

@@ -1,6 +1,8 @@
 import Image from "next/image";
-import { Hash, Sparkles, File as FileIcon, BookmarkPlus } from "lucide-react";
+import { Hash, Sparkles, File as FileIcon, BookmarkPlus, MessageSquareReply, Pencil, MoveRight } from "lucide-react";
 import { Message } from "@/lib/store/workspaceStore";
+import { useWorkspaceStore } from "@/lib/store/workspaceStore";
+import { toast } from "sonner";
 
 function formatTime(timestamp?: string) {
   if (!timestamp) return "";
@@ -22,6 +24,9 @@ interface MessageListProps {
   onSaveMemory: (message: Message) => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   apiUrl: string;
+  onReply?: (message: Message) => void;
+  onEdit?: (message: Message) => void;
+  roomId?: number;
 }
 
 export default function MessageList({
@@ -30,7 +35,33 @@ export default function MessageList({
   onSaveMemory,
   messagesEndRef,
   apiUrl,
+  onReply,
+  onEdit,
+  roomId,
 }: MessageListProps) {
+  const { channels } = useWorkspaceStore();
+
+  async function handleMove(message: Message) {
+    if (!roomId) return;
+    const newChannelStr = prompt("Enter the name of the channel to move to:\n" + channels.map(c => c.name).join(", "));
+    if (!newChannelStr) return;
+    
+    const targetChannel = channels.find(c => c.name.toLowerCase() === newChannelStr.toLowerCase());
+    if (!targetChannel) {
+      toast.error("Channel not found");
+      return;
+    }
+    
+    try {
+      const { moveMessage } = await import("@/lib/api/messages");
+      await moveMessage(roomId, message.id, targetChannel.id);
+      toast.success(`Moved to ${targetChannel.name}`);
+    } catch (error) {
+      toast.error("Failed to move message");
+    }
+  }
+
+  // To build threads easily, we can find the parent message and show a prefix if parent_id exists
   return (
     <section className="flex-1 overflow-y-auto px-3 py-4 md:px-5">
       {messages.length === 0 && (
@@ -57,6 +88,7 @@ export default function MessageList({
             prevUsername === username &&
             previous?.created_at &&
             msg.created_at &&
+            !msg.parent_id &&
             formatDate(previous.created_at) === formatDate(msg.created_at);
 
           const content = msg.content || msg.message;
@@ -69,13 +101,15 @@ export default function MessageList({
             Boolean(msg.extra_data?.file_type && typeof msg.extra_data.file_type === "string" && msg.extra_data.file_type.startsWith("image/")) ||
             Boolean(msg.extra_data?.file_name && typeof msg.extra_data.file_name === "string" && /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(msg.extra_data.file_name));
 
+          const isReply = !!msg.parent_id;
+
           return (
             <div
               id={`message-${msg.temp_id || msg.id}`}
               key={msg.temp_id ? `temp-${msg.temp_id}` : `${msg.id}-${index}`}
               className={`scroll-mt-24 flex gap-3 py-1 ${
                 mine ? "justify-end" : "justify-start"
-              }`}
+              } ${isReply ? "ml-8 opacity-90 border-l-2 border-border pl-2" : ""}`}
             >
               {!mine && (
                 <div
@@ -110,7 +144,7 @@ export default function MessageList({
                 )}
 
                 <div
-                  className={`rounded-lg px-4 py-2.5 text-sm leading-relaxed shadow-sm transition-all ${
+                  className={`relative rounded-lg px-4 py-2.5 text-sm leading-relaxed shadow-sm transition-all ${
                     msg.is_pending ? "opacity-60" : ""
                   } ${
                     fromAI
@@ -122,6 +156,7 @@ export default function MessageList({
                 >
                   <div className="whitespace-pre-wrap break-words">
                     {content}
+                    {msg.edited_at && <span className="text-[10px] opacity-70 ml-2">(edited)</span>}
                   </div>
 
                   {msg.extra_data && typeof msg.extra_data.file_url === "string" && (
@@ -157,6 +192,24 @@ export default function MessageList({
                           </span>
                         </a>
                       )}
+                    </div>
+                  )}
+
+                  {!msg.is_pending && (
+                    <div className={`absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-background/95 shadow-sm border border-border rounded-md px-1 py-1 ${mine ? "right-full mr-2" : "left-full ml-2"}`}>
+                      {onReply && (
+                        <button onClick={() => onReply(msg)} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Reply">
+                          <MessageSquareReply size={14} />
+                        </button>
+                      )}
+                      {mine && onEdit && (
+                        <button onClick={() => onEdit(msg)} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Edit">
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      <button onClick={() => handleMove(msg)} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground" title="Move message">
+                        <MoveRight size={14} />
+                      </button>
                     </div>
                   )}
                 </div>

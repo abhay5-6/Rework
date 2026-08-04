@@ -337,9 +337,11 @@ async def websocket_chat(
 
                             "workspace_id": workspace_id,
                             "channel_id": saved_message.channel_id,
+                            "parent_id": getattr(saved_message, 'parent_id', None),
                             "message": saved_message.content,
                             "extra_data": saved_message.extra_data,
                             "created_at": saved_message.created_at.replace(tzinfo=timezone.utc).isoformat(),
+                            "edited_at": None,
                             "temp_id": temp_id
                         }
                     }
@@ -466,8 +468,11 @@ async def handle_ai_chat_command(
                             "user_id": None,
                             "username": "Rework AI",
                             "workspace_id": workspace_id,
+                            "channel_id": saved_message.channel_id,
+                            "parent_id": getattr(saved_message, 'parent_id', None),
                             "message": saved_message.content,
-                            "created_at": saved_message.created_at.replace(tzinfo=timezone.utc).isoformat()
+                            "created_at": saved_message.created_at.replace(tzinfo=timezone.utc).isoformat(),
+                            "edited_at": None
                         }
                     }
                     await manager.broadcast(workspace_id, message_payload)

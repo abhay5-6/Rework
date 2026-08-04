@@ -128,3 +128,66 @@ async def list_workspace_messages(
         )
 
     return messages
+
+from app.schemas.message import MessageUpdate, MessageMove
+from app.services.message_service import update_message, move_message
+
+from app.websocket.manager import manager
+
+@router.put(
+    "/{workspace_id}/messages/{message_id}",
+    response_model=MessageResponse
+)
+async def edit_message(
+    workspace_id: int,
+    message_id: int,
+    message_data: MessageUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    message = await update_message(db, message_id, current_user, message_data.content)
+    if not message:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this message")
+    
+    await db.commit()
+    
+    await manager.broadcast(
+        workspace_id,
+        {
+            "type": "message_updated",
+            "message_id": message.id,
+            "content": message.content,
+            "edited_at": message.edited_at.isoformat() if message.edited_at else None
+        }
+    )
+    
+    return message
+
+
+@router.patch(
+    "/{workspace_id}/messages/{message_id}/move",
+    response_model=MessageResponse
+)
+async def move_message_route(
+    workspace_id: int,
+    message_id: int,
+    message_data: MessageMove,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    message = await move_message(db, message_id, current_user, message_data.channel_id)
+    if not message:
+        raise HTTPException(status_code=403, detail="Not authorized to move this message")
+        
+    await db.commit()
+    
+    await manager.broadcast(
+        workspace_id,
+        {
+            "type": "message_moved",
+            "message_id": message.id,
+            "new_channel_id": message.channel_id
+        }
+    )
+    
+    return message
