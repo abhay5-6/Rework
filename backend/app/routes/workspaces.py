@@ -15,11 +15,11 @@ from sqlalchemy.ext.asyncio import (
 
 from app.db.session import get_db
 
-from app.schemas.workspace import (
     RoomCreate,
     RoomResponse,
     RoomUpdate,
-    WorkspaceMemberResponse
+    WorkspaceMemberResponse,
+    RoleUpdate
 )
 
 from app.services.workspace_service import (
@@ -34,8 +34,7 @@ from app.services.workspace_service import (
 
 from app.services.membership_service import (
     get_workspace_members,
-    promote_member,
-    demote_member,
+    change_member_role,
     remove_member
 )
 from app.services.join_request_service import (
@@ -382,131 +381,48 @@ async def list_workspace_members(
             detail="Access denied"
         )
 
+        )
+
     return members
 
 
-@router.post(
-    "/{workspace_id}/promote/{user_id}",
+@router.patch(
+    "/{workspace_id}/members/{user_id}",
     response_model=MessageOnlyResponse,
-    dependencies=[Depends(require_workspace_owner)],
 )
-async def promote_workspace_member(
-
+async def update_workspace_member_role(
     workspace_id: int,
-
     user_id: int,
-
-    db: AsyncSession = Depends(
-        get_db
-    ),
-
-    current_user: User = Depends(
-        get_current_user
-    )
+    role_update: RoleUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-
-    result = await promote_member(
+    result = await change_member_role(
         db,
         workspace_id,
         user_id,
+        role_update.role,
         current_user
     )
 
+    if result == "not_authorized":
+        raise HTTPException(status_code=403, detail="Not authorized")
     if result == "member_not_found":
-
-        raise HTTPException(
-            status_code=404,
-            detail="Member not found"
-        )
-
-    if result == "already_admin":
-
-        raise HTTPException(
-            status_code=400,
-            detail="User is already admin"
-        )
-
+        raise HTTPException(status_code=404, detail="Member not found")
     if result == "cannot_modify_owner":
-
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot modify owner"
-        )
-
-    if result != "promoted":
-        raise HTTPException(status_code=400, detail="Promote failed")
-
-    return {
-        "message":
-            "Member promoted"
-    }
+        raise HTTPException(status_code=400, detail="Cannot modify owner")
+    if result == "cannot_set_owner":
+        raise HTTPException(status_code=400, detail="Cannot assign owner role")
+    if result == "cannot_modify_self":
+        raise HTTPException(status_code=400, detail="Cannot modify your own role")
+    if result == "invalid_role":
+        raise HTTPException(status_code=400, detail="Invalid role specified")
+        
+    return {"message": "Role updated"}
 
 
-@router.post(
-    "/{workspace_id}/demote/{user_id}",
-    response_model=MessageOnlyResponse,
-    dependencies=[Depends(require_workspace_owner)],
-)
-async def demote_workspace_member(
 
-    workspace_id: int,
-
-    user_id: int,
-
-    db: AsyncSession = Depends(
-        get_db
-    ),
-
-    current_user: User = Depends(
-        get_current_user
-    )
-):
-
-    result = await demote_member(
-        db,
-        workspace_id,
-        user_id,
-        current_user
-    )
-
-    if result == "member_not_found":
-
-        raise HTTPException(
-            status_code=404,
-            detail="Member not found"
-        )
-
-    if result == "cannot_modify_owner":
-
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot modify owner"
-        )
-    
-    if result == "cannot_demote_self":
-
-        raise HTTPException(
-            status_code=400,
-            detail="Owner cannot demote self"
-        )
-    
-    if result == "already_member":
-
-        raise HTTPException(
-            status_code=400,
-            detail="User is already member"
-        )
-
-    if result != "demoted":
-        raise HTTPException(status_code=400, detail="Demote failed")
-
-    return {
-        "message":
-            "Member demoted"
-    }
-
-
-@router.post(
+@router.delete(
     "/{workspace_id}/remove/{user_id}",
     response_model=MessageOnlyResponse,
     dependencies=[Depends(require_workspace_admin)],

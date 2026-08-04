@@ -93,3 +93,82 @@ async def get_workspace_channels(db: AsyncSession, workspace_id: int, current_us
             
     return filtered_channels
 
+
+async def get_channel_members(db: AsyncSession, channel_id: int, current_user: int):
+    from sqlalchemy import select
+    from app.models.membership import ChannelMembership
+    from app.models.user import User
+    
+    # Permission is implicitly checked by the route (if it's a private channel, you have to be in it or be workspace admin)
+    
+    results = await db.execute(
+        select(ChannelMembership, User)
+        .join(User, ChannelMembership.user_id == User.id)
+        .where(ChannelMembership.channel_id == channel_id)
+    )
+    
+    members = []
+    for membership, user in results:
+        members.append({
+            "user_id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": membership.role
+        })
+    return members
+
+
+async def add_channel_member(db: AsyncSession, channel_id: int, user_id: int, current_user: int):
+    from sqlalchemy import select
+    from app.models.channel import Channel
+    from app.models.membership import ChannelMembership
+    from app.utils.permissions import ChannelRole
+    
+    # 1. Verify channel exists
+    channel = (await db.execute(select(Channel).where(Channel.id == channel_id))).scalar_one_or_none()
+    if not channel:
+        return "channel_not_found"
+        
+    # 2. Verify user is in the workspace
+    ws_membership = await membership_repo.get_membership(db, workspace_id=channel.workspace_id, user_id=user_id)
+    if not ws_membership:
+        return "user_not_in_workspace"
+        
+    # 3. Check if already in channel
+    cm_result = await db.execute(
+        select(ChannelMembership).where(
+            ChannelMembership.channel_id == channel_id,
+            ChannelMembership.user_id == user_id
+        )
+    )
+    if cm_result.scalar_one_or_none():
+        return "already_member"
+        
+    # 4. Add member
+    cm = ChannelMembership(user_id=user_id, channel_id=channel_id, role=ChannelRole.MEMBER.value)
+    db.add(cm)
+    await db.commit()
+    return "added"
+
+
+async def remove_channel_member(db: AsyncSession, channel_id: int, user_id: int, current_user: int):
+    from sqlalchemy import select
+    from app.models.membership import ChannelMembership
+    
+    if user_id == current_user.id:
+        return "cannot_remove_self"
+        
+    cm_result = await db.execute(
+        select(ChannelMembership).where(
+            ChannelMembership.channel_id == channel_id,
+            ChannelMembership.user_id == user_id
+        )
+    )
+    cm = cm_result.scalar_one_or_none()
+    
+    if not cm:
+        return "member_not_found"
+        
+    await db.delete(cm)
+    await db.commit()
+    return "removed"

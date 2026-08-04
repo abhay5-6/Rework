@@ -30,6 +30,8 @@ class RoomResponse(BaseModel):
 
     ai_enabled: bool = True
 
+    can_create_private_channel: bool = True
+
     class Config:
         from_attributes = True
 
@@ -38,5 +40,10 @@ class WorkspaceMemberResponse(BaseModel):
     user_id: int
 
     username: str
+    
+    email: str
 
+    role: str
+
+class RoleUpdate(BaseModel):
     role: str
