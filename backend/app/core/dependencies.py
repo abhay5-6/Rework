@@ -37,6 +37,7 @@ async def get_current_user(
     except TokenDecodeError:
         raise credentials_exception
 
+
     result = await db.execute(
         select(User).where(User.email == email)
     )

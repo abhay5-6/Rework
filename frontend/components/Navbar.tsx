@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { BrainCircuit, LayoutGrid, LogOut, Network, ChevronDown, Settings } from "lucide-react";
+import { BrainCircuit, LayoutGrid, LogOut, Network, ChevronDown, Settings, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import NotificationBell from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -81,6 +81,20 @@ export default function Navbar() {
                 <LayoutGrid size={16} />
                 Workspaces
               </Link>
+
+              {auth.user?.is_system_admin && (
+                <Link
+                  href="/admin"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition ${
+                    isActive("/admin")
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-muted-foreground hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20"
+                  }`}
+                >
+                  <ShieldAlert size={16} />
+                  Admin
+                </Link>
+              )}
 
               <div className="relative" ref={dropdownRef}>
                 <button

@@ -94,6 +94,12 @@ pip install -r requirements.txt
 # Configure environment variables
 cp .env.example .env
 
+# Apply database migrations
+alembic upgrade head
+
+# Seed the development database (optional)
+python scripts/seed_dev.py
+
 # Run FastAPI development server
 uvicorn app.main:app --reload
 ```
