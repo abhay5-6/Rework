@@ -1,24 +1,4 @@
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto"
-)
-
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def verify_password(
-    plain_password: str,
-    hashed_password: str
-) -> bool:
-    return pwd_context.verify(
-        plain_password,
-        hashed_password
-    )
-
+import bcrypt
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 
@@ -33,7 +13,53 @@ class TokenDecodeError(Exception):
     pass
 
 
-def create_access_token(data: dict):
+def hash_password(password: str) -> str:
+    """
+    Hashes a plain text password using bcrypt.
+    
+    Args:
+        password: The plain text password.
+        
+    Returns:
+        The hashed password string.
+    """
+    pwd_bytes = password.encode("utf-8")[:72]
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+
+
+def verify_password(
+    plain_password: str,
+    hashed_password: str
+) -> bool:
+    """
+    Verifies a plain text password against a bcrypt hash.
+    
+    Args:
+        plain_password: The plain text password to check.
+        hashed_password: The stored bcrypt hash string.
+        
+    Returns:
+        True if password matches, False otherwise.
+    """
+    pwd_bytes = plain_password.encode("utf-8")[:72]
+    hash_bytes = hashed_password.encode("utf-8")
+    try:
+        return bcrypt.checkpw(pwd_bytes, hash_bytes)
+    except Exception:
+        return False
+
+
+def create_access_token(data: dict) -> str:
+    """
+    Encodes data payload into a JWT access token.
+    
+    Args:
+        data: Dictionary payload containing user metadata (e.g. sub: email).
+        
+    Returns:
+        Encoded JWT token string.
+    """
     to_encode = data.copy()
     issued_at = datetime.now(timezone.utc)
 
@@ -59,6 +85,18 @@ def create_access_token(data: dict):
 
 
 def decode_access_token(token: str) -> dict:
+    """
+    Decodes and validates a JWT access token.
+    
+    Args:
+        token: Encoded JWT token string.
+        
+    Returns:
+        Decoded payload dictionary.
+        
+    Raises:
+        TokenDecodeError: If token is invalid, expired, or missing claims.
+    """
     try:
         payload = jwt.decode(
             token,

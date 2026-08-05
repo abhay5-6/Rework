@@ -86,6 +86,9 @@ class Settings:
     oauth_state_expire_minutes: int
 
     redis_url: str
+    max_file_size_bytes: int
+    workspace_storage_quota_bytes: int
+    disallowed_file_extensions: set[str]
 
 
 def load_settings() -> Settings:
@@ -278,6 +281,25 @@ def load_settings() -> Settings:
         redis_url=os.getenv(
             "REDIS_URL",
             "redis://localhost:6379/0"
+        ),
+
+        max_file_size_bytes=_get_int_env(
+            "MAX_FILE_SIZE_BYTES",
+            26214400  # 25 MB
+        ),
+
+        workspace_storage_quota_bytes=_get_int_env(
+            "WORKSPACE_STORAGE_QUOTA_BYTES",
+            524288000  # 500 MB
+        ),
+
+        disallowed_file_extensions=set(
+            ext.strip().lower()
+            for ext in os.getenv(
+                "DISALLOWED_FILE_EXTENSIONS",
+                ".exe,.bat,.cmd,.sh,.php,.py,.pl,.cgi,.html,.htm,.js,.svg"
+            ).split(",")
+            if ext.strip()
         )
     )
 
@@ -357,3 +379,8 @@ MEMORY_MIN_CONTENT_LENGTH = (
 MEMORY_MAX_CONTENT_LENGTH = (
     settings.memory_max_content_length
 )
+
+MAX_FILE_SIZE_BYTES = settings.max_file_size_bytes
+WORKSPACE_STORAGE_QUOTA_BYTES = settings.workspace_storage_quota_bytes
+DISALLOWED_FILE_EXTENSIONS = settings.disallowed_file_extensions
+
