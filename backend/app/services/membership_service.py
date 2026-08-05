@@ -35,59 +35,45 @@ async def get_workspace_members(
         formatted_members.append({
             "user_id": user.id,
             "username": user.username,
+            "email": user.email,
             "role": membership.role
         })
 
     return formatted_members
 
 
-async def promote_member(
+async def change_member_role(
     db: AsyncSession,
     workspace_id: int,
     target_user_id: int,
+    new_role: str,
     current_user: User
 ):
+    from app.utils.permissions import WorkspaceRole, has_workspace_role
     current_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=current_user.id)
-    if not is_workspace_owner(current_membership):
-        return "not_owner"
-
-    target_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=target_user_id)
-    if not target_membership:
-        return "member_not_found"
-    if target_membership.role == "owner":
-        return "cannot_modify_owner"
-    if target_membership.role == "admin":
-        return "already_admin"
-
-    target_membership.role = "admin"
-    await db.commit()
-    return "promoted"
-
-
-async def demote_member(
-    db: AsyncSession,
-    workspace_id: int,
-    target_user_id: int,
-    current_user: User
-):
-    current_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=current_user.id)
-    if not is_workspace_owner(current_membership):
-        return "not_owner"
-
+    
+    if not current_user.is_system_admin and not has_workspace_role(current_membership, WorkspaceRole.ADMIN):
+        return "not_authorized"
+        
     if target_user_id == current_user.id:
-        return "cannot_demote_self"
+        return "cannot_modify_self"
 
     target_membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=target_user_id)
     if not target_membership:
         return "member_not_found"
-    if target_membership.role == "owner":
+        
+    if target_membership.role == WorkspaceRole.OWNER.value:
         return "cannot_modify_owner"
-    if target_membership.role == "member":
-        return "already_member"
+        
+    if new_role not in [r.value for r in WorkspaceRole]:
+        return "invalid_role"
+        
+    if new_role == WorkspaceRole.OWNER.value:
+        return "cannot_set_owner"
 
-    target_membership.role = "member"
+    target_membership.role = new_role
     await db.commit()
-    return "demoted"
+    return "role_updated"
 
 
 async def remove_member(

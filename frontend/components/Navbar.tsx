@@ -14,7 +14,10 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const auth = useAuth();
-  const { organizations, activeOrgId, setActiveOrgId, setOrganizations } = useOrgStore();
+  const organizations = useOrgStore((state) => state.organizations);
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+  const setActiveOrgId = useOrgStore((state) => state.setActiveOrgId);
+  const setOrganizations = useOrgStore((state) => state.setOrganizations);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -32,12 +35,12 @@ export default function Navbar() {
     if (auth.isAuthenticated) {
       getOrganizations().then((data) => {
         setOrganizations(data);
-        if (data.length > 0 && !activeOrgId) {
+        if (data.length > 0 && !useOrgStore.getState().activeOrgId) {
           setActiveOrgId(data[0].id);
         }
       }).catch(console.error);
     }
-  }, [auth.isAuthenticated, setOrganizations, activeOrgId, setActiveOrgId]);
+  }, [auth.isAuthenticated]);
 
   function handleLogout() {
     auth.logout();

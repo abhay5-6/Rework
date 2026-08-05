@@ -14,6 +14,8 @@ import AIAssistantPanel from "@/components/ai/AIAssistantPanel";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import KanbanBoard from "@/components/tasks/KanbanBoard";
 import VideoGrid from "@/components/video/VideoGrid";
+import WorkspaceSettingsModal from "@/components/modals/WorkspaceSettingsModal";
+import ChannelSettingsModal from "@/components/modals/ChannelSettingsModal";
 
 import { useWebRTC } from "@/hooks/useWebRTC";
 import { useWorkspaceSocket } from "@/hooks/useWorkspaceSocket";
@@ -36,7 +38,7 @@ export default function RoomPage() {
 
   // Stores
   const { user, setUser } = useAuthStore();
-  const { workspace, setRoom, messages, setMessages, setDesks, activeDeskId, setActiveDeskId } = useWorkspaceStore();
+  const { workspace, setRoom, messages, setMessages, channels, setDesks, activeDeskId, setActiveDeskId } = useWorkspaceStore();
   const { socket, isConnected } = useSocketStore();
   const { queue } = useQueueStore();
 
@@ -50,6 +52,8 @@ export default function RoomPage() {
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [parseWithAI, setParseWithAI] = useState(true);
+  const [workspaceSettingsOpen, setWorkspaceSettingsOpen] = useState(false);
+  const [channelSettingsDeskId, setChannelSettingsDeskId] = useState<number | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
 
@@ -75,6 +79,17 @@ export default function RoomPage() {
     if (!isAuthenticated()) {
       router.push("/login");
     }
+
+    const handleOpenWorkspaceSettings = () => setWorkspaceSettingsOpen(true);
+    const handleOpenChannelSettings = (e: any) => setChannelSettingsDeskId(e.detail.deskId);
+
+    document.addEventListener('open-workspace-settings', handleOpenWorkspaceSettings);
+    document.addEventListener('open-channel-settings', handleOpenChannelSettings);
+
+    return () => {
+      document.removeEventListener('open-workspace-settings', handleOpenWorkspaceSettings);
+      document.removeEventListener('open-channel-settings', handleOpenChannelSettings);
+    };
   }, [router]);
 
   useEffect(() => {
@@ -324,6 +339,21 @@ export default function RoomPage() {
           <KanbanBoard roomId={roomId} currentUsername={user?.username || ""} />
         </div>
       </div>
+
+      {workspaceSettingsOpen && workspace && (
+        <WorkspaceSettingsModal
+          workspace={workspace}
+          onClose={() => setWorkspaceSettingsOpen(false)}
+        />
+      )}
+
+      {channelSettingsDeskId && channels.find(c => c.id === channelSettingsDeskId) && (
+        <ChannelSettingsModal
+          channel={channels.find(c => c.id === channelSettingsDeskId)!}
+          workspaceId={roomId}
+          onClose={() => setChannelSettingsDeskId(null)}
+        />
+      )}
     </div>
   );
 }

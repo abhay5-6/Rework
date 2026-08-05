@@ -17,38 +17,14 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-
   (response) => response,
-
   (error) => {
-
-    if (
-      error.response?.status ===
-      401
-    ) {
-
-      // Clear from sessionStorage (primary) and localStorage (fallback)
-      sessionStorage.removeItem(
-        "token"
-      );
-      
-      localStorage.removeItem(
-        "token"
-      );
-
-      if (
-        window.location.pathname
-        !== "/login"
-      ) {
-
-        window.location.href =
-          "/login";
-      }
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      sessionStorage.removeItem("token");
+      localStorage.removeItem("token");
+      window.dispatchEvent(new Event("auth-unauthorized"));
     }
-
-    return Promise.reject(
-      error
-    );
+    return Promise.reject(error);
   }
 );
 

@@ -61,17 +61,29 @@ export default function WorkspaceSidebar({
           Back to workspaces
         </Link>
 
-        <div className="mt-4 flex items-center gap-3">
-          <div className="h-11 w-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-            <Network size={20} />
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-semibold truncate">{workspace.name}</h1>
-            <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-              {workspace.is_private ? <Lock size={12} /> : <Hash size={12} />}
-              {workspace.is_private ? "Private workspace" : "Public workspace"}
+        <div className="mt-4 flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+              <Network size={20} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-semibold truncate">{workspace.name}</h1>
+              <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                {workspace.is_private ? <Lock size={12} /> : <Hash size={12} />}
+                {workspace.is_private ? "Private workspace" : "Public workspace"}
+              </div>
             </div>
           </div>
+          
+          {(workspace.role === "owner" || workspace.role === "admin") && (
+            <button 
+              onClick={() => document.dispatchEvent(new CustomEvent('open-workspace-settings'))}
+              className="text-muted-foreground hover:text-foreground p-1 transition"
+              title="Workspace Settings"
+            >
+              <Shield size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -110,12 +122,16 @@ export default function WorkspaceSidebar({
                 />
               </div>
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer">
+                <label 
+                  className={`flex items-center gap-1.5 text-[10px] ${workspace.can_create_private_channel ? 'text-muted-foreground cursor-pointer' : 'text-muted-foreground/50 cursor-not-allowed'}`}
+                  title={!workspace.can_create_private_channel ? "Organization restricts private channels to administrators only." : undefined}
+                >
                   <input
                     type="checkbox"
                     checked={isPrivateChannel}
-                    onChange={(e) => setIsPrivateChannel(e.target.checked)}
-                    className="rounded border-border bg-background text-primary focus:ring-primary"
+                    onChange={(e) => workspace.can_create_private_channel && setIsPrivateChannel(e.target.checked)}
+                    disabled={!workspace.can_create_private_channel}
+                    className="rounded border-border bg-background text-primary focus:ring-primary disabled:opacity-50"
                   />
                   <Lock size={10} />
                   Private Channel
@@ -137,18 +153,33 @@ export default function WorkspaceSidebar({
             const active = channel.id === activeDeskId;
 
             return (
-              <button
-                key={channel.id}
-                onClick={() => setActiveDeskId(channel.id)}
-                className={`w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm transition ${
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-background hover:text-foreground"
-                }`}
-              >
-                <Hash size={16} />
-                {channel.name}
-              </button>
+              <div key={channel.id} className="group relative flex items-center">
+                <button
+                  onClick={() => setActiveDeskId(channel.id)}
+                  className={`flex-1 flex items-center gap-2 rounded-md px-3 py-2 text-sm transition pr-8 ${
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-background hover:text-foreground"
+                  }`}
+                >
+                  {channel.is_private ? <Lock size={14} /> : <Hash size={16} />}
+                  <span className="truncate">{channel.name}</span>
+                </button>
+                {channel.is_private && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      document.dispatchEvent(new CustomEvent('open-channel-settings', { detail: { deskId: channel.id } }));
+                    }}
+                    className={`absolute right-2 p-1 rounded-md opacity-0 group-hover:opacity-100 transition ${
+                      active ? 'text-primary-foreground hover:bg-black/20' : 'text-muted-foreground hover:bg-muted'
+                    }`}
+                    title="Channel Settings"
+                  >
+                    <Shield size={14} />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

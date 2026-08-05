@@ -17,3 +17,12 @@ class ChannelSchema(ChannelBase):
 
     class Config:
         from_attributes = True
+
+class ChannelMemberResponse(BaseModel):
+    user_id: int
+    username: str
+    email: str
+    role: str
+
+class ChannelMemberCreate(BaseModel):
+    user_id: int

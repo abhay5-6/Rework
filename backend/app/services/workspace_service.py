@@ -191,6 +191,20 @@ async def get_workspace_by_id(
         return None
 
     membership = await membership_repo.get_membership(db, workspace_id=workspace_id, user_id=current_user.id)
+    
+    can_create_private_channel = True
+    if workspace.organization_id:
+        from app.models.organization import Organization, OrgMembership
+        org = (await db.execute(select(Organization).where(Organization.id == workspace.organization_id))).scalar_one_or_none()
+        
+        org_membership = (await db.execute(
+            select(OrgMembership).where(OrgMembership.org_id == workspace.organization_id, OrgMembership.user_id == current_user.id)
+        )).scalar_one_or_none()
+        
+        is_org_admin = org_membership and org_membership.role in ["owner", "admin"]
+        
+        if not is_org_admin and org and not org.allow_private_channels:
+            can_create_private_channel = False
 
     return {
         "id": workspace.id,
@@ -200,7 +214,8 @@ async def get_workspace_by_id(
         "ai_enabled": workspace.ai_enabled,
         "owner_id": workspace.owner_id,
         "is_member": membership is not None,
-        "role": membership.role if membership else None
+        "role": membership.role if membership else None,
+        "can_create_private_channel": can_create_private_channel
     }
 
 

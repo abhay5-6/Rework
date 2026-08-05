@@ -54,10 +54,31 @@ async def login(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    if settings.email_verification_enabled and not user.email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail="Please verify your email address before logging in."
+        )
+
     return {
         "access_token": create_access_token(data={"sub": user.email}),
         "token_type": "bearer"
     }
+
+
+@router.get("/verify-email")
+async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.email_verification_token == token))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+    user.email_verified = True
+    user.email_verification_token = None
+    await db.commit()
+
+    return {"message": "Email verified successfully"}
 
 
 @router.get("/me", response_model=UserResponse)

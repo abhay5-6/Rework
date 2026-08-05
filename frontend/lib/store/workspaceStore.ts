@@ -40,10 +40,14 @@ export interface Memory {
 }
 
 export interface Workspace {
+  owner_id: number;
+  is_member: boolean;
+  role: string | null;
+  ai_enabled: boolean;
+  can_create_private_channel?: boolean;
   id: number;
   name: string;
   description: string;
-  ai_enabled?: boolean;
   is_private?: boolean;
 }
 

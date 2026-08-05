@@ -175,7 +175,88 @@ async def require_channel_access(
             ChannelMembership.user_id == current_user.id
         )
     )
-    if not cm_result.scalar_one_or_none():
-        raise HTTPException(status_code=403, detail="Private channel access required")
+from enum import Enum
+
+class WorkspaceRole(str, Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    CONTRIBUTOR = "contributor"
+    VIEWER = "viewer"
+
+class ChannelRole(str, Enum):
+    ADMIN = "admin"
+    MEMBER = "member"
+
+class OrgRole(str, Enum):
+    OWNER = "owner"
+    ADMIN = "admin"
+    MEMBER = "member"
+
+def has_workspace_role(membership: WorkspaceMembership | None, min_role: WorkspaceRole) -> bool:
+    """Check if user has at least the specified workspace role."""
+    if not membership:
+        return False
+        
+    role_hierarchy = {
+        WorkspaceRole.OWNER: 4,
+        WorkspaceRole.ADMIN: 3,
+        WorkspaceRole.CONTRIBUTOR: 2,
+        WorkspaceRole.VIEWER: 1
+    }
+    
+    user_level = role_hierarchy.get(WorkspaceRole(membership.role), 0)
+    required_level = role_hierarchy.get(min_role, 99)
+    
+    return user_level >= required_level
+
+def require_workspace_role(min_role: WorkspaceRole):
+    """Dependency factory for checking granular workspace roles."""
+    async def role_checker(
+        workspace_id: int,
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+    ) -> WorkspaceMembership:
+        if current_user.is_system_admin:
+            return WorkspaceMembership(user_id=current_user.id, workspace_id=workspace_id, role=WorkspaceRole.OWNER)
+            
+        membership = await get_membership(db, workspace_id, current_user.id)
+        if not has_workspace_role(membership, min_role):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Requires at least {min_role.value} role",
+            )
+        return membership
+    return role_checker
+
+async def require_channel_admin(
+    channel_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Ensure user is an admin of the channel, or an admin of the workspace."""
+    if current_user.is_system_admin:
+        return True
+        
+    # Check channel
+    channel_result = await db.execute(select(Channel).where(Channel.id == channel_id))
+    channel = channel_result.scalar_one_or_none()
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+        
+    # Check workspace admin
+    ws_membership = await get_membership(db, channel.workspace_id, current_user.id)
+    if is_admin(ws_membership):
+        return True
+        
+    # Check channel admin
+    cm_result = await db.execute(
+        select(ChannelMembership).where(
+            ChannelMembership.channel_id == channel_id,
+            ChannelMembership.user_id == current_user.id
+        )
+    )
+    cm = cm_result.scalar_one_or_none()
+    if not cm or cm.role != ChannelRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Channel Administrator privileges required")
         
     return True
