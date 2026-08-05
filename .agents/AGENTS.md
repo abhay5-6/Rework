@@ -12,7 +12,7 @@ These rules apply to all AI agents working within this workspace. You MUST follo
 - For the frontend, do not swallow errors in try/catch blocks silently. Log errors gracefully or use the UI toast notification system (`toast.error()`).
 
 ## 3. Artifacts and File Hygiene
-- Do not commit artifacts, temporary scratch files, or planning markdown files to the repository. The `.gitignore` prevents `*.md` from being tracked, EXCEPT `README.md` and `CONTRIBUTING.md`. Do not bypass this rule.
+- Do not commit artifacts, temporary scratch files, or planning markdown files to the repository. Local planning Markdown files are allowed, but must remain ignored and uncommitted. The `.gitignore` prevents `*.md` from being tracked, EXCEPT `README.md` and `CONTRIBUTING.md`. Do not bypass this rule.
 - Do not create scratch files or artifact files directly in the repository root if they are meant for agent planning. Store them in the agent's dedicated `.gemini/` artifact directory.
 
 ## 4. Architecture and Design
