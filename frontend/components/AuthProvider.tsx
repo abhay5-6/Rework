@@ -1,16 +1,7 @@
 "use client";
 
-import {
-
-  createContext,
-
-  useContext,
-
-  useEffect,
-
-  useState
-
-} from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { getMe } from "@/lib/api/auth";
 
 type User = {
   id: number;
@@ -33,40 +24,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  function login(token: string) {
+  async function login(token: string) {
     sessionStorage.setItem("token", token);
     localStorage.setItem("token", token);
     setIsAuthenticated(true);
+    try {
+      const userData = await getMe();
+      setUser(userData);
+    } catch (error) {
+      console.error("Failed to fetch user data after login", error);
+    }
   }
 
   function logout() {
     sessionStorage.removeItem("token");
     localStorage.removeItem("token");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("org-storage");
+    }
     setIsAuthenticated(false);
     setUser(null);
   }
 
   useEffect(() => {
-    queueMicrotask(async () => {
-      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    function handleUnauthorized() {
+      sessionStorage.removeItem("token");
+      localStorage.removeItem("token");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("org-storage");
+      }
+      setIsAuthenticated(false);
+      setUser(null);
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("auth-unauthorized", handleUnauthorized);
+    }
+
+    async function checkAuth() {
+      const token = typeof window !== "undefined"
+        ? (sessionStorage.getItem("token") || localStorage.getItem("token"))
+        : null;
+
       if (token) {
         try {
-          // Dynamic import to avoid circular dependencies if any
-          const { getMe } = await import("@/lib/api/auth");
           const userData = await getMe();
           setUser(userData);
           setIsAuthenticated(true);
-        } catch (error) {
-          console.error("Failed to fetch user data", error);
-          // If token is invalid, the interceptor will handle it, but we set false just in case
-          setIsAuthenticated(false);
+        } catch (error: any) {
+          console.error("Failed to fetch user data:", error);
+          if (error?.response?.status === 401) {
+            sessionStorage.removeItem("token");
+            localStorage.removeItem("token");
+            setUser(null);
+            setIsAuthenticated(false);
+          } else {
+            setIsAuthenticated(true);
+          }
         }
       } else {
         setIsAuthenticated(false);
       }
       setIsLoaded(true);
-    });
-  }, [isAuthenticated]); // Re-run when authentication status changes (like after login)
+    }
+
+    checkAuth();
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("auth-unauthorized", handleUnauthorized);
+      }
+    };
+  }, []); // Re-run when authentication status changes (like after login)
 
   if (!isLoaded) {
     return null;

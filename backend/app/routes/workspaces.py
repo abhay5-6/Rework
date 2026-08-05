@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import (
 
 from app.db.session import get_db
 
+from app.schemas.workspace import (
     RoomCreate,
     RoomResponse,
     RoomUpdate,
@@ -379,8 +380,6 @@ async def list_workspace_members(
         raise HTTPException(
             status_code=403,
             detail="Access denied"
-        )
-
         )
 
     return members

@@ -24,15 +24,30 @@ async def create_user(
 
     user_data_hashed = user_data.model_dump()
     user_data_hashed["hashed_password"] = hash_password(user_data_hashed.pop("password"))
+    
+    import secrets
+    from app.core.config import settings
+    token = secrets.token_urlsafe(32)
+    user_data_hashed["email_verification_token"] = token
+    user_data_hashed["email_verified"] = not settings.email_verification_enabled
+    
     new_user = await user_repo.create(db, obj_in=user_data_hashed)
+    
+    if settings.email_verification_enabled:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"VERIFICATION LINK FOR {new_user.email}: {settings.frontend_url}/verify-email?token={token}")
+        
     return new_user
 
 async def authenticate_user(
     db: AsyncSession,
-    email: str,
+    email_or_username: str,
     password: str
 ):
-    user = await user_repo.get_by_email(db, email=email)
+    user = await user_repo.get_by_email(db, email=email_or_username)
+    if not user:
+        user = await user_repo.get_by_username(db, username=email_or_username)
 
     if not user:
         return None

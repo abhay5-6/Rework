@@ -35,6 +35,7 @@ async def get_workspace_members(
         formatted_members.append({
             "user_id": user.id,
             "username": user.username,
+            "email": user.email,
             "role": membership.role
         })
 

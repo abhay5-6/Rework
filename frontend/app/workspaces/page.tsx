@@ -45,7 +45,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export default function RoomsPage() {
   const router = useRouter();
-  const { activeOrgId, setActiveOrgId, setOrganizations } = useOrgStore();
+  const activeOrgId = useOrgStore((state) => state.activeOrgId);
+  const setActiveOrgId = useOrgStore((state) => state.setActiveOrgId);
+  const setOrganizations = useOrgStore((state) => state.setOrganizations);
   const [workspaces, setRooms] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -77,34 +79,40 @@ export default function RoomsPage() {
       return;
     }
 
+    let isSubscribed = true;
+
     async function initRooms() {
       setLoading(true);
       try {
         let currentOrgId = activeOrgId;
         if (!currentOrgId) {
           const orgs = await getOrganizations();
-          if (orgs.length > 0) {
+          if (orgs.length > 0 && isSubscribed) {
             setOrganizations(orgs);
             currentOrgId = orgs[0].id;
             setActiveOrgId(currentOrgId);
           }
         }
-        if (currentOrgId) {
+        if (currentOrgId && isSubscribed) {
           const data = await getRooms(currentOrgId);
-          setRooms(data);
-        } else {
+          if (isSubscribed) setRooms(data);
+        } else if (isSubscribed) {
           setRooms([]);
         }
       } catch (error) {
         console.error(error);
-        toast.error("Failed to load workspaces");
+        if (isSubscribed) toast.error("Failed to load workspaces");
       } finally {
-        setLoading(false);
+        if (isSubscribed) setLoading(false);
       }
     }
 
     initRooms();
-  }, [router, activeOrgId, setActiveOrgId, setOrganizations]);
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [router]);
 
   async function handleCreateRoom() {
     if (!name.trim()) {
