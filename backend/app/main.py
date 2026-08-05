@@ -176,7 +176,6 @@ app.include_router(channel_router, prefix="/channels", tags=["Channels"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
 os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/")
 def root():
