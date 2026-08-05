@@ -48,3 +48,7 @@ async def get_current_user(
         raise credentials_exception
 
     return user
+
+async def get_arq_pool(request: Request):
+    """Dependency to get the ARQ queue pool from app state."""
+    return getattr(request.app.state, "arq_pool", None)
