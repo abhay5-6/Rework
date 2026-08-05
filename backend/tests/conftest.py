@@ -2,41 +2,32 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.main import app
-from app.db.database import Base, engine as global_engine
+from app.db.database import Base, DATABASE_URL
 from app.db.session import get_db
 from app.models.user import User
 from app.core.security import hash_password
 
-# For tests, we use the same database but wrap every test in a transaction that is rolled back.
+# Use NullPool for tests so asyncpg allocates a clean connection per AsyncSession task
+test_engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
+
+
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session():
-    # Connect to the database
-    async with global_engine.connect() as conn:
-        # Start a transaction
-        transaction = await conn.begin()
-        # Bind an AsyncSession to this connection
-        async_session = AsyncSession(
-            bind=conn, 
-            expire_on_commit=False,
-            join_transaction_mode="create_savepoint"
-        )
-        
-        try:
-            yield async_session
-        finally:
-            await async_session.close()
-            # Rollback the transaction to keep db clean
-            await transaction.rollback()
+    """Provides a dedicated AsyncSession for setting up test data."""
+    async with AsyncSession(test_engine, expire_on_commit=False) as session:
+        yield session
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(db_session):
+async def client():
+    """Provides an AsyncClient for sending HTTP requests to the FastAPI application."""
     async def override_get_db():
-        yield db_session
+        async with AsyncSession(test_engine, expire_on_commit=False) as session:
+            yield session
 
     app.dependency_overrides[get_db] = override_get_db
     
@@ -50,6 +41,12 @@ async def client(db_session):
 
 @pytest_asyncio.fixture(scope="function")
 async def test_user(db_session: AsyncSession):
+    """Fixture creating a standard verified test user."""
+    from sqlalchemy import select
+    result = await db_session.execute(select(User).where(User.email == "testuser@example.com"))
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
     user = User(
         username="testuser",
         email="testuser@example.com",
@@ -59,10 +56,18 @@ async def test_user(db_session: AsyncSession):
     )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
+
 
 @pytest_asyncio.fixture(scope="function")
 async def admin_user(db_session: AsyncSession):
+    """Fixture creating an admin test user."""
+    from sqlalchemy import select
+    result = await db_session.execute(select(User).where(User.email == "adminuser@example.com"))
+    existing = result.scalar_one_or_none()
+    if existing:
+        return existing
     user = User(
         username="adminuser",
         email="adminuser@example.com",
@@ -72,4 +77,6 @@ async def admin_user(db_session: AsyncSession):
     )
     db_session.add(user)
     await db_session.commit()
+    await db_session.refresh(user)
     return user
+
