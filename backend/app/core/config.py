@@ -95,6 +95,11 @@ class Settings:
     cookie_samesite: str
     cookie_domain: str | None
 
+    ai_enabled: bool
+    ai_test_mode: bool
+    ai_timeout_seconds: int
+
+
 
 
 def load_settings() -> Settings:
@@ -319,8 +324,13 @@ def load_settings() -> Settings:
 
         cookie_secure=os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes"),
         cookie_samesite=os.getenv("COOKIE_SAMESITE", "lax").lower(),
-        cookie_domain=os.getenv("COOKIE_DOMAIN", None)
+        cookie_domain=os.getenv("COOKIE_DOMAIN", None),
+
+        ai_enabled=os.getenv("AI_ENABLED", "true").lower() in ("true", "1", "yes"),
+        ai_test_mode=os.getenv("AI_TEST_MODE", "false").lower() in ("true", "1", "yes"),
+        ai_timeout_seconds=_get_int_env("AI_TIMEOUT_SECONDS", 10)
     )
+
 
 
 
