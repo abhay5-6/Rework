@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, Shield, Globe, Lock, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { AxiosError } from "axios";
 import { isAuthenticated } from "@/lib/auth";
+
 import { getOrganization, updateOrganization, Organization } from "@/lib/api/organizations";
 import { useOrgStore } from "@/lib/store/orgStore";
 
@@ -55,10 +57,15 @@ export default function OrgSettingsPage({ params }: { params: { id: string } }) 
       });
       toast.success("Settings saved successfully");
       loadOrg();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.response?.data?.detail || "Failed to save settings");
+      if (error instanceof AxiosError && error.response?.data?.detail) {
+        toast.error(error.response.data.detail);
+      } else {
+        toast.error("Failed to save settings");
+      }
     } finally {
+
       setSaving(false);
     }
   }

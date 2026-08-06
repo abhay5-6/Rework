@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import api from "@/lib/api/client";
+import { AxiosError } from "axios";
 
 export default function VerifyEmailPage() {
   const router = useRouter();
@@ -15,19 +16,23 @@ export default function VerifyEmailPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      setErrorMessage("No verification token provided in the URL.");
-      return;
-    }
-
     async function verifyToken() {
+      if (!token) {
+        setStatus("error");
+        setErrorMessage("No verification token provided in the URL.");
+        return;
+      }
+
       try {
         await api.get(`/auth/verify-email?token=${token}`);
         setStatus("success");
-      } catch (error: any) {
+      } catch (err: unknown) {
         setStatus("error");
-        setErrorMessage(error.response?.data?.detail || "Verification failed or token expired.");
+        if (err instanceof AxiosError && err.response?.data?.detail) {
+          setErrorMessage(err.response.data.detail);
+        } else {
+          setErrorMessage("Verification failed or token expired.");
+        }
       }
     }
 

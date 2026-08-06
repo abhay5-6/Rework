@@ -4,6 +4,8 @@ import { Network, Lock, Hash, Search, Bot, Plus, X, CheckCircle2, Sparkles, Pane
 import { useWorkspaceStore, Workspace } from "@/lib/store/workspaceStore";
 import { createChannel } from "@/lib/api/channels";
 import { toast } from "sonner";
+import { AxiosError } from "axios";
+
 
 const defaultTools = [
   { id: "decisions", label: "decisions", icon: CheckCircle2 },
@@ -43,10 +45,15 @@ export default function WorkspaceSidebar({
       setIsPrivateChannel(false);
       setIsCreatingChannel(false);
       toast.success(`Channel #${createdChannel.name} created`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.response?.data?.detail || "Failed to create channel");
+      if (error instanceof AxiosError && error.response?.data?.detail) {
+        toast.error(error.response.data.detail);
+      } else {
+        toast.error("Failed to create channel");
+      }
     } finally {
+
       setLoading(false);
     }
   }

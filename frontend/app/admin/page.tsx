@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldAlert, Users, Network, Hash, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { isAuthenticated } from "@/lib/auth";
 import api from "@/lib/api/client";
+import { AxiosError } from "axios";
 
 interface AdminStats {
   users: number;
@@ -18,26 +19,34 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AdminStats | null>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push("/login");
-      return;
-    }
-    loadStats();
-  }, [router]);
-
-  async function loadStats() {
+  const loadStats = useCallback(async () => {
     try {
       const response = await api.get("/admin/stats");
       setStats(response.data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.response?.data?.detail || "Not authorized to view admin dashboard");
+      if (error instanceof AxiosError && error.response?.data?.detail) {
+        toast.error(error.response.data.detail);
+      } else {
+        toast.error("Not authorized to view admin dashboard");
+      }
       router.push("/workspaces");
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
+
+  useEffect(() => {
+    async function checkAndLoad() {
+      const authed = await isAuthenticated();
+      if (!authed) {
+        router.push("/login");
+        return;
+      }
+      loadStats();
+    }
+    checkAndLoad();
+  }, [router, loadStats]);
 
   if (loading) {
     return (

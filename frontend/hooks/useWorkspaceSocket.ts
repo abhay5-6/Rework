@@ -17,10 +17,13 @@ import { getWsTicket } from "@/lib/api/auth";
  */
 export function useWorkspaceSocket(
   roomId: number,
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   handleSignalingData: (msg: any) => void,
   socketRef: React.MutableRefObject<WebSocket | null>
 ) {
-  const { socket, isConnected, setSocket, setIsConnected } = useSocketStore();
+
+  const { setSocket, setIsConnected } = useSocketStore();
+
   const { removeMessage } = useQueueStore();
   const { addMessage: addRoomMessage } = useWorkspaceStore();
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
@@ -67,9 +70,10 @@ export function useWorkspaceSocket(
       try {
         const ticketData = await getWsTicket(roomId);
         ticket = ticketData.ticket;
-      } catch (error) {
+      } catch {
         console.warn(`[useWorkspaceSocket] Ticket request failed, falling back to cookie upgrade for workspace ${roomId}`);
       }
+
 
       if (!isMounted) return;
 

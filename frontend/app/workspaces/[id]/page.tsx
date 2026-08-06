@@ -81,7 +81,11 @@ export default function RoomPage() {
     }
 
     const handleOpenWorkspaceSettings = () => setWorkspaceSettingsOpen(true);
-    const handleOpenChannelSettings = (e: any) => setChannelSettingsDeskId(e.detail.deskId);
+    const handleOpenChannelSettings = (e: Event) => {
+      const customEvent = e as CustomEvent<{ deskId: number }>;
+      setChannelSettingsDeskId(customEvent.detail.deskId);
+    };
+
 
     document.addEventListener('open-workspace-settings', handleOpenWorkspaceSettings);
     document.addEventListener('open-channel-settings', handleOpenChannelSettings);

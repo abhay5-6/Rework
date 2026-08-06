@@ -7,7 +7,7 @@ export async function isAuthenticated(): Promise<boolean> {
   try {
     await getMe();
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

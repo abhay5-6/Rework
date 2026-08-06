@@ -81,9 +81,10 @@ export default function CognitiveGraph({ roomId }: { roomId: number }) {
         }));
 
         setGraphData({ nodes, links });
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("GRAPH LOAD ERROR", err);
         setError("AI Knowledge Graph is currently offline or disabled.");
+
       } finally {
         setLoading(false);
       }

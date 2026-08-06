@@ -65,10 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await getMe();
         setUser(userData);
         setIsAuthenticated(true);
-      } catch (error: any) {
+      } catch {
         setUser(null);
         setIsAuthenticated(false);
       } finally {
+
         setIsLoaded(true);
       }
     }

@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { X, UserPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api/client";
+import { AxiosError } from "axios";
 import { Channel } from "@/lib/api/channels";
+
 
 interface ChannelMember {
   user_id: number;
@@ -11,25 +13,27 @@ interface ChannelMember {
   role: string;
 }
 
+interface WorkspaceMemberItem {
+  user_id: number;
+  username: string;
+  role?: string;
+}
+
 export default function ChannelSettingsModal({
   channel,
   workspaceId,
   onClose,
 }: {
-  channel: Channel;
+  channel: { id: number; name: string; is_private: boolean };
   workspaceId: number;
   onClose: () => void;
 }) {
   const [members, setMembers] = useState<ChannelMember[]>([]);
-  const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([]);
+  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUserToAdd, setSelectedUserToAdd] = useState("");
 
-  useEffect(() => {
-    fetchData();
-  }, [channel.id]);
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [membersRes, wsMembersRes] = await Promise.all([
@@ -38,12 +42,20 @@ export default function ChannelSettingsModal({
       ]);
       setMembers(membersRes.data);
       setWorkspaceMembers(wsMembersRes.data);
-    } catch (error: any) {
+    } catch {
       toast.error("Failed to load channel data");
     } finally {
       setLoading(false);
     }
-  }
+  }, [channel.id, workspaceId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchData]);
+
 
   async function handleAddMember(e: React.FormEvent) {
     e.preventDefault();
@@ -54,8 +66,12 @@ export default function ChannelSettingsModal({
       toast.success("Member added to private channel");
       setSelectedUserToAdd("");
       fetchData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Failed to add member");
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.data?.detail) {
+        toast.error(err.response.data.detail);
+      } else {
+        toast.error("Failed to add member");
+      }
     }
   }
 
@@ -65,8 +81,12 @@ export default function ChannelSettingsModal({
       await api.delete(`/channels/${channel.id}/members/${userId}`);
       toast.success("Member removed");
       fetchData();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Failed to remove member");
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.data?.detail) {
+        toast.error(err.response.data.detail);
+      } else {
+        toast.error("Failed to remove member");
+      }
     }
   }
 

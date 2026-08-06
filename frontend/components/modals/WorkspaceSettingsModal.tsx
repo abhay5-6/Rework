@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { X, Shield, ShieldAlert, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api/client";
+import { AxiosError } from "axios";
 import { Workspace, WorkspaceMember } from "@/lib/store/workspaceStore";
 
 export default function WorkspaceSettingsModal({
@@ -14,54 +15,59 @@ export default function WorkspaceSettingsModal({
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchMembers();
-  }, [workspace.id]);
-
-  async function fetchMembers() {
+  const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get(`/workspaces/${workspace.id}/members`);
       setMembers(res.data);
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Failed to fetch members");
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.data?.detail) {
+        toast.error(err.response.data.detail);
+      } else {
+        toast.error("Failed to fetch members");
+      }
     } finally {
       setLoading(false);
     }
-  }
+  }, [workspace.id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchMembers();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchMembers]);
+
 
   async function handleRoleChange(userId: number, newRole: string) {
     try {
       await api.patch(`/workspaces/${workspace.id}/members/${userId}`, { role: newRole });
       toast.success("Role updated successfully");
       fetchMembers();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Failed to update role");
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.data?.detail) {
+        toast.error(err.response.data.detail);
+      } else {
+        toast.error("Failed to update role");
+      }
     }
   }
 
   async function handleRemoveMember(userId: number) {
     if (!confirm("Are you sure you want to remove this member?")) return;
     try {
-      await api.delete(`/workspaces/${workspace.id}/remove/${userId}`); // Wait, it's /members/{user_id} now in my new endpoint!
-      toast.success("Member removed");
-      fetchMembers();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Failed to remove member");
-    }
-  }
-
-  // Fixing the endpoint above to match the new one I created
-  async function handleRemoveMemberCorrected(userId: number) {
-    if (!confirm("Are you sure you want to remove this member?")) return;
-    try {
       await api.delete(`/workspaces/${workspace.id}/members/${userId}`);
       toast.success("Member removed");
       fetchMembers();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Failed to remove member");
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.data?.detail) {
+        toast.error(err.response.data.detail);
+      } else {
+        toast.error("Failed to remove member");
+      }
     }
   }
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -111,7 +117,8 @@ export default function WorkspaceSettingsModal({
                       
                       {member.role !== "owner" && (
                         <button
-                          onClick={() => handleRemoveMemberCorrected(member.user_id)}
+                          onClick={() => handleRemoveMember(member.user_id)}
+
                           className="rounded px-2 py-1 text-xs text-destructive hover:bg-destructive/10 transition"
                         >
                           Remove
