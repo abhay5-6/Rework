@@ -52,6 +52,7 @@ type GraphLink = {
 export default function CognitiveGraph({ roomId }: { roomId: number }) {
   const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const fgRef = useRef<ForceGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -59,6 +60,7 @@ export default function CognitiveGraph({ roomId }: { roomId: number }) {
   useEffect(() => {
     async function loadGraph() {
       try {
+        setError(null);
         const res = await api.get(`/ai/graph/${roomId}`);
         
         const data = res.data as { nodes: GraphApiNode[]; edges: GraphApiEdge[] };
@@ -79,8 +81,9 @@ export default function CognitiveGraph({ roomId }: { roomId: number }) {
         }));
 
         setGraphData({ nodes, links });
-      } catch (error) {
-        console.error("GRAPH LOAD ERROR", error);
+      } catch (err: any) {
+        console.error("GRAPH LOAD ERROR", err);
+        setError("AI Knowledge Graph is currently offline or disabled.");
       } finally {
         setLoading(false);
       }
@@ -88,6 +91,7 @@ export default function CognitiveGraph({ roomId }: { roomId: number }) {
 
     loadGraph();
   }, [roomId]);
+
 
   // Handle responsive resizing
   useEffect(() => {
@@ -157,7 +161,21 @@ export default function CognitiveGraph({ roomId }: { roomId: number }) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="w-full h-[300px] rounded-3xl overflow-hidden border border-border bg-background/50 backdrop-blur flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mb-3">
+          <Loader2 size={24} className="opacity-50" />
+        </div>
+        <h3 className="font-semibold text-foreground mb-1">AI Assistant Offline</h3>
+        <p className="text-sm text-muted-foreground max-w-md">{error}</p>
+      </div>
+    );
+  }
+
+
   return (
+
     <div 
       ref={containerRef}
       className="w-full h-[800px] rounded-3xl overflow-hidden border border-border bg-background shadow-2xl relative"

@@ -37,17 +37,17 @@ router = APIRouter(
 
 async def summarize_workspace_memory(
     request: Request,
-
     workspace_id: int,
-
     query: str,
-
     db: AsyncSession = Depends(get_db),
-
-    current_user: User = Depends(
-        get_current_user
-    )
+    current_user: User = Depends(get_current_user)
 ):
+    if not settings.ai_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="AI features are currently disabled"
+        )
+
 
     # Verify user has access to workspace
     has_access = await has_workspace_access(

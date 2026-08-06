@@ -100,9 +100,10 @@ async def create_message(
                 workspace_id,
                 current_user.id,
                 message_id=created_message.id,
-                message_content=created_message.content
+                content=created_message.content
             )
         )
+
 
     return created_message
 @router.get(

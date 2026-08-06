@@ -39,17 +39,16 @@ router = APIRouter(
 @limiter.limit(settings.ai_rate_limit)
 async def get_workspace_graph(
     request: Request,
-
     workspace_id: int,
-
-    db: AsyncSession = Depends(
-        get_db
-    ),
-
-    current_user: User = Depends(
-        get_current_user
-    )
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    if not settings.ai_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="AI features are currently disabled"
+        )
+
 
     # Verify user has access to workspace
     has_access = await has_workspace_access(
