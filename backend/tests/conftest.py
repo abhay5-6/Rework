@@ -1,17 +1,26 @@
+import os
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.pool import NullPool
 
+os.environ["AI_TEST_MODE"] = "true"
+from app.core.config import settings
+
+
 from app.main import app
 from app.db.database import Base, DATABASE_URL
 from app.db.session import get_db
 from app.models.user import User
 from app.core.security import hash_password
+from app.core.rate_limit import limiter
+limiter.enabled = False
+
 
 # Use NullPool for tests so asyncpg allocates a clean connection per AsyncSession task
 test_engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
+
 
 
 
