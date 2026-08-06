@@ -1,7 +1,8 @@
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import { Hash, Sparkles, File as FileIcon, BookmarkPlus, MessageSquareReply, Pencil, MoveRight } from "lucide-react";
 import { Message } from "@/lib/store/workspaceStore";
 import { useWorkspaceStore } from "@/lib/store/workspaceStore";
+import { downloadWorkspaceFile } from "@/lib/api/files";
 import { toast } from "sonner";
 
 function formatTime(timestamp?: string) {
@@ -23,10 +24,107 @@ interface MessageListProps {
   currentUsername: string | null;
   onSaveMemory: (message: Message) => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
-  apiUrl: string;
   onReply?: (message: Message) => void;
   onEdit?: (message: Message) => void;
   roomId?: number;
+}
+
+interface SecureAttachmentProps {
+  fileName: string;
+  fileUrl: string;
+  isImage: boolean;
+  isVideo: boolean;
+}
+
+function SecureAttachment({
+  fileName,
+  fileUrl,
+  isImage,
+  isVideo,
+}: SecureAttachmentProps) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl: string | null = null;
+
+    async function loadAttachment() {
+      try {
+        const blob = await downloadWorkspaceFile(fileUrl);
+        objectUrl = URL.createObjectURL(blob);
+        if (active) {
+          setBlobUrl(objectUrl);
+        }
+      } catch {
+        if (active) {
+          setLoadError(true);
+        }
+      }
+    }
+
+    void loadAttachment();
+
+    return () => {
+      active = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [fileUrl]);
+
+  function downloadAttachment() {
+    if (!blobUrl) {
+      toast.error("File is still loading");
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = fileName;
+    link.click();
+  }
+
+  if (loadError) {
+    return <p className="text-xs text-destructive">Attachment is unavailable or you no longer have access.</p>;
+  }
+
+  if (!blobUrl) {
+    return <p className="text-xs text-muted-foreground">Loading attachment…</p>;
+  }
+
+  if (isImage) {
+    return (
+      <img
+        src={blobUrl}
+        alt={fileName}
+        className="max-h-64 w-auto rounded-lg border border-border object-cover"
+      />
+    );
+  }
+
+  if (isVideo) {
+    return (
+      <video
+        src={blobUrl}
+        controls
+        preload="metadata"
+        className="max-h-72 w-full max-w-md rounded-lg border border-border bg-black/90 object-contain"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={downloadAttachment}
+      className="flex w-max max-w-full items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2 text-foreground transition hover:bg-muted"
+    >
+      <FileIcon size={17} />
+      <span className="truncate text-sm font-medium">{fileName}</span>
+      <span className="text-xs text-muted-foreground">Download</span>
+    </button>
+  );
 }
 
 export default function MessageList({
@@ -34,7 +132,6 @@ export default function MessageList({
   currentUsername,
   onSaveMemory,
   messagesEndRef,
-  apiUrl,
   onReply,
   onEdit,
   roomId,
@@ -161,37 +258,12 @@ export default function MessageList({
 
                   {msg.extra_data && typeof msg.extra_data.file_url === "string" && (
                     <div className="mt-3">
-                      {isVideo ? (
-                        <div className="overflow-hidden rounded-lg border border-border bg-black/90 shadow-md">
-                          <video
-                            src={`${apiUrl}${msg.extra_data.file_url}`}
-                            controls
-                            preload="metadata"
-                            className="max-h-72 w-full max-w-md object-contain"
-                          />
-                        </div>
-                      ) : isImage ? (
-                        <Image
-                          src={`${apiUrl}${msg.extra_data.file_url}`}
-                          alt={typeof msg.extra_data.file_name === "string" ? msg.extra_data.file_name : "attachment"}
-                          width={640}
-                          height={360}
-                          unoptimized
-                          className="max-h-64 w-auto rounded-lg border border-border object-cover"
-                        />
-                      ) : (
-                        <a
-                          href={`${apiUrl}${msg.extra_data.file_url}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex w-max max-w-full items-center gap-2 rounded-lg border border-border bg-background/80 px-3 py-2 text-foreground transition hover:bg-muted"
-                        >
-                          <FileIcon size={17} />
-                          <span className="truncate text-sm font-medium">
-                            {typeof msg.extra_data.file_name === "string" ? msg.extra_data.file_name : "file"}
-                          </span>
-                        </a>
-                      )}
+                      <SecureAttachment
+                        fileUrl={msg.extra_data.file_url}
+                        fileName={typeof msg.extra_data.file_name === "string" ? msg.extra_data.file_name : "file"}
+                        isImage={isImage}
+                        isVideo={isVideo}
+                      />
                     </div>
                   )}
 

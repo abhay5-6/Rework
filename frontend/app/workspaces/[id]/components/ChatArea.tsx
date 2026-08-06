@@ -8,8 +8,6 @@ import { useQueueStore } from "@/lib/store/queueStore";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 function getErrorMessage(error: unknown, fallback: string) {
   const err = error as { response?: { data?: { detail?: string } } };
   if (err.response?.data?.detail && typeof err.response.data.detail === "string") {
@@ -180,7 +178,6 @@ export default function ChatArea({
         currentUsername={currentUsername}
         onSaveMemory={handleSaveMemory}
         messagesEndRef={messagesEndRef}
-        apiUrl={apiUrl}
         onReply={(msg) => { setReplyTo(msg); setEditMsg(null); setInput(""); }}
         onEdit={(msg) => { setEditMsg(msg); setReplyTo(null); setInput(msg.content || msg.message || ""); }}
         roomId={roomId}

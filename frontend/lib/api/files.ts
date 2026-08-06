@@ -39,14 +39,15 @@ export async function uploadRoomFile(
 }
 
 /**
- * Constructs an authenticated URL for accessing or downloading a workspace file.
+ * Retrieves a protected workspace file using the authenticated API client.
  *
- * @param fileUrl - The relative file path returned by the server (e.g. /workspaces/1/files/uuid.png).
- * @param token - Optional JWT access token to attach as a query parameter for media tags.
- * @returns Formatted absolute or relative URL with authentication token attached.
+ * @param fileUrl - The relative file URL returned by the upload endpoint.
+ * @returns The protected file contents as a Blob.
  */
-export function getAuthenticatedFileUrl(fileUrl: string, token?: string): string {
-  if (!token) return fileUrl;
-  const separator = fileUrl.includes("?") ? "&" : "?";
-  return `${fileUrl}${separator}token=${encodeURIComponent(token)}`;
+export async function downloadWorkspaceFile(fileUrl: string): Promise<Blob> {
+  const response = await api.get<Blob>(fileUrl, {
+    responseType: "blob",
+  });
+
+  return response.data;
 }
