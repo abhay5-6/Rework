@@ -1,26 +1,102 @@
 # Contributing to Rework
 
-Welcome to the Rework project! To ensure our codebase remains maintainable, reliable, and welcoming to all developers, we enforce the following coding standards and guidelines.
+Thank you for your interest in contributing to **Rework**! We welcome contributions from developers of all skill levels, including students, open-source first-timers, and experienced engineers.
 
-## 1. Documentation & Comments
-- **Backend (Python)**: Every service, repository, route, and model must have a descriptive docstring. Explain what the function does, its arguments, and its return values. If it raises specific domain exceptions, document those as well.
-- **Frontend (TypeScript/React)**: Use JSDoc comments for all custom hooks, Zustand stores, and complex UI components. Explain the purpose of the hook/component and any non-obvious side effects.
-- **In-line Comments**: Use in-line comments to explain *why* something is done, not *what* is done, especially for complex state management, AI integrations, or WebRTC signaling.
+This guide outlines our development setup, testing standards, code style, and pull request workflow.
 
-## 2. Logging & Error Handling
-- **Structured Logging (Backend)**: Always use the configured Python `logging` module (`logger = logging.getLogger(__name__)`). Do not use `print()`. 
-- **Context-Aware Logs**: When logging information, include relevant context (e.g., `user_id`, `room_id`, `message_id`) using the `extra` kwarg: `logger.info("Message sent", extra={"room_id": 123})`.
-- **Frontend Errors**: Do not swallow errors. Avoid generic `console.error(err)`. Provide descriptive error messages and use proper error boundaries. When showing toasts to users, use user-friendly language.
-- **Domain Exceptions**: The backend should raise domain-specific exceptions (e.g., `RoomNotFoundException`) rather than generic HTTP exceptions in the service layer.
+---
 
-## 3. Clean Code & Architecture
-- **Dependency Injection**: Use FastAPI's `Depends` for all database sessions and current user state. Do not instantiate database sessions manually inside services.
-- **Separation of Concerns**: Keep routes thin. Business logic belongs in the `services/` layer. Database queries belong in the `repositories/` layer.
-- **Type Hinting**: All Python functions and TypeScript definitions must have strict type hints. Do not use `Any` unless absolutely necessary.
-- **Clean Imports**: Remove unused imports. Group imports logically (standard library, third-party, local).
+## 🧭 Contributor Path (First-Time Contributor Quickstart)
 
-## 4. Git Workflow
-- Always create a feature branch for new work (e.g., `feature/add-auth`).
-- Do not commit artifacts, `.md` files that belong to AI memory, or temporary scratchpads to the repository. Only commit code, configuration, and essential project documentation (`README.md`, `CONTRIBUTING.md`).
+If you are a new contributor, follow these steps to make your first contribution without needing private help:
 
-Thank you for helping keep Rework clean and robust!
+### 1. Fork & Clone Repository
+```bash
+git clone https://github.com/YOUR-USERNAME/collaborative-chat-platform.git
+cd collaborative-chat-platform
+```
+
+### 2. Configure Local Non-Secret Defaults
+Copy the provided environment example files which contain working non-secret local defaults:
+```bash
+# Backend configuration
+cp backend/.env.example backend/.env
+
+# Frontend configuration
+cp frontend/.env.local.example frontend/.env.local
+```
+
+### 3. Setup & Run Database Migrations
+```bash
+cd backend
+python -m venv test_env
+source test_env/bin/activate
+pip install -r requirements.txt
+pip install pytest pytest-asyncio httpx slowapi psutil
+
+alembic upgrade head
+```
+
+### 4. Run Automated Test Suite
+Make sure all backend tests pass locally before editing any code:
+```bash
+test_env/bin/pytest tests/ -v
+```
+
+### 5. Frontend Development & Typecheck
+```bash
+cd ../frontend
+npm ci
+npm run type-check
+npm run lint
+```
+
+---
+
+## 🏷️ Good First Issue Tasks
+
+Looking for an issue to start with? Look for issues tagged with `good first issue` on GitHub.
+
+Good first issue tasks always include:
+1. **Clear reproduction steps** or target file locations.
+2. **Explicit acceptance criteria**.
+3. **Automated test instructions**.
+
+Example candidate tasks:
+- Adding a new UI icon or tooltip to workspace settings.
+- Adding a test case for specific error HTTP status codes.
+- Cleaning up unused imports or TypeScript type annotations.
+
+---
+
+## 📜 Pull Request Guidelines
+
+Before submitting a Pull Request (PR), please verify:
+
+1. **Clean Commit History**: Write clear, conventional commit messages (`feat: ...`, `fix: ...`, `test: ...`, `docs: ...`).
+2. **Zero Linting & Type Errors**:
+   ```bash
+   cd frontend
+   npm run type-check
+   npm run lint
+   ```
+3. **Passing Test Suite**:
+   ```bash
+   cd backend
+   test_env/bin/pytest tests/ -v
+   ```
+4. **No Committed Secrets**: Never commit `.env` files, API keys, JWT secrets, passwords, or production credentials.
+
+---
+
+## 🔒 Security & Code Standards
+
+- **Backend**: Always use `logger = logging.getLogger(__name__)` with `extra={...}` context. Do not use raw `print()` statements.
+- **Frontend**: Log errors gracefully or use toast notifications (`toast.error()`). Do not swallow errors silently in try/catch blocks.
+- **API Security**: Maintain strict type hints (`str`, `int`, `list`, `dict`), use `Depends()` for database sessions, and enforce tenant permission checks on all protected endpoints.
+
+---
+
+## 💬 Getting Help
+
+If you run into documentation gaps or setup issues, please open an Issue on GitHub describing the step where you got stuck so we can improve our documentation!

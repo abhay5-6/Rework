@@ -1,83 +1,74 @@
-# Rework - Cognitive Workspace & Real-Time Collaboration Platform
+# Rework — Multi-Tenant Cognitive Collaboration Platform
 
-A modern, open-source, multi-tenant collaboration platform with channel-based workspaces, automatic AI memory indexing, WebSockets, offline resiliency, and WebRTC video calls.
+[![CI Pipeline](https://github.com/abhay5-6/collaborative-chat-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/abhay5-6/collaborative-chat-platform/actions)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-green.svg)](https://www.python.org/)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org/)
 
-Built with **FastAPI**, **Next.js (App Router)**, **PostgreSQL**, **Zustand**, and **TailwindCSS**.
+**Rework** is a modern, enterprise-grade multi-tenant collaboration platform with channel-based workspaces, automatic AI memory indexing, WebSockets real-time sync, HttpOnly transport security, offline resiliency, and WebRTC video calling.
+
+Built with **FastAPI**, **Next.js (App Router)**, **PostgreSQL (pgvector)**, **Zustand**, and **Vanilla CSS / Tailwind**.
 
 ---
 
-## ✨ Features & Highlights
+## 📸 Key Features
 
-### 🏢 Multi-Tenant Organizations & Workspaces
-- **Organizations**: Root tenant context (`Org -> Workspaces -> Channels`).
-- **Workspaces (Rooms)**: Public or private workspaces within an organization.
-- **Channels (Desks)**: Topic-based communication channels (e.g., `#general`, `#dev`).
-- **Governance**: Granular owner, admin, and member role-based access control.
-
-### ⚡ Real-Time Messaging & Resilient Engine
-- **WebSocket Engine**: Sub-10ms real-time chat, typing indicators, and online presence tracking.
-- **Offline Queue**: Messages typed while offline are stored securely in `localStorage` (`queueStore`) and automatically flushed upon WebSocket reconnection.
-- **Optimistic UI**: Instant visual message rendering with sending/retry state badges.
-
-### 🧠 Automatic AI Memory Indexing
-- **Semantic Extraction**: Asynchronously extracts decisions, notes, and tasks from messages into room memory.
-- **AI Assistant & Knowledge Graph**: Query room memory directly in the AI Assistant panel or visualize connections in the Interactive Memory Graph.
-
-### 📹 Live Video Calls & Task Board
-- **WebRTC Mesh Video**: Peer-to-peer audio/video calling within any workspace channel.
-- **Kanban Board**: Drag-and-drop task management built into every workspace.
+- **🏢 Multi-Tenant Isolation**: Hierarchical organizational hierarchy (`Org -> Workspaces -> Channels`). Strict tenant boundaries prevent cross-tenant data leakage.
+- **🔒 HttpOnly CSRF Auth Transport**: Dual-submit CSRF cookie protection + short-lived 60-second WebSocket authentication tickets. Zero long-lived bearer tokens stored in `localStorage`.
+- **⚡ Real-Time Resilient Socket Engine**: Sub-10ms real-time chat, typing indicators, and presence tracking with automatic offline message queue flushing.
+- **🧠 Decoupled AI Memory Indexing**: SentenceTransformers vector embeddings and Google Gemini memory extraction running asynchronously through background workers with test-mode stubs and 503 fallback banners.
+- **🛡️ Quality Gate & Observability**: Complete CI pipeline release gate with Alembic database migration validation, structured JSON logging, security log sanitization, and `/health` metrics.
 
 ---
 
 ## 🏗️ System Architecture
 
-For a deep dive into the database domain model, real-time message flow, and AI extraction engine, read our [ARCHITECTURE.md](./ARCHITECTURE.md).
-
-```
+```text
 +-------------------------------------------------------------+
-|                     Next.js 14 Frontend                     |
-|         (Zustand Stores, Offline Queue, React Hooks)         |
+|                     Next.js 16 Frontend                     |
+|         (Zustand Stores, Offline Queue, WebSockets)         |
 +---------------------+-----------------------+---------------+
                       |                       |
-            REST APIs |                       | WebSockets
+            REST APIs | HttpOnly Cookies      | WS Ticket Authentication
                       v                       v
 +---------------------+-----------------------+---------------+
 |                    FastAPI Backend Engine                   |
-|         (Authentication, Room Logic, Socket Manager)        |
+|       (Centralized Auth, Rate Limiting, Route Guard)        |
 +---------------------+-----------------------+---------------+
                       |                       |
-            SQLAlchemy|                       | Async Tasks
+            SQLAlchemy| pgvector              | ARQ Redis Jobs
                       v                       v
 +---------------------+-------+   +-----------+---------------+
-| PostgreSQL Database         |   | AI Memory Extractor       |
-| (Orgs, Rooms, Desks, Chat)  |   | (SentenceTransformers / Vector)|
+| PostgreSQL + pgvector DB    |   | ARQ Background Worker     |
+| (Orgs, Workspaces, Channels)|   | (AI Memory & Embeddings)  |
 +-----------------------------+   +---------------------------+
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Environment Configuration Reference
 
-### Frontend
-- **Framework**: Next.js 14 (App Router) + React 18
-- **State Management**: Zustand (with LocalStorage Persistence)
-- **Styling**: Vanilla TailwindCSS + Lucide Icons + Next-Themes (Dark/Light mode)
-- **Real-Time & Calls**: Custom WebSocket Engine + WebRTC
-
-### Backend
-- **Framework**: FastAPI (Python 3.11+)
-- **Database**: PostgreSQL + SQLAlchemy (Async ORM) + AsyncPG
-- **Security**: JWT Authentication + Password Hashing (Bcrypt) + Rate Limiting
-- **AI & ML**: Gemini / Ollama + SentenceTransformers (Vector Embeddings)
+| Environment Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://rework_user:rework_password@localhost:5432/rework_db` |
+| `JWT_SECRET` | Secret key for signing JWT tokens | `super-secret-jwt-key-replace-in-production!` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | HttpOnly auth token expiration | `60` |
+| `FRONTEND_URL` | Origin URL of Next.js frontend | `http://localhost:3000` |
+| `BACKEND_CORS_ORIGINS` | Allowed CORS origins for REST API | `http://localhost:3000` |
+| `WEBSOCKET_ALLOWED_ORIGINS` | Allowed origins for WebSockets | `http://localhost:3000` |
+| `AI_ENABLED` | Toggle AI features across backend | `true` |
+| `AI_TEST_MODE` | Enable instant mock AI stubs | `true` (for local tests & CI) |
+| `GEMINI_API_KEY` | Google Gemini AI API Key | *(Optional in dev/test)* |
 
 ---
 
-## 🚀 Quickstart & Setup
+## 🚀 Quickstart & Local Setup
 
 ### 1. Prerequisites
 - Python 3.11+
-- Node.js 18+
-- PostgreSQL database instance
+- Node.js 20+
+- PostgreSQL 15+ (with `pgvector` extension)
+- Redis 7+
 
 ### 2. Backend Setup
 
@@ -85,50 +76,69 @@ For a deep dive into the database domain model, real-time message flow, and AI e
 cd backend
 
 # Create & activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python -m venv test_env
+source test_env/bin/activate  # On Windows: test_env\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+pip install pytest pytest-asyncio httpx slowapi psutil
 
 # Configure environment variables
 cp .env.example .env
 
-# Apply database migrations
+# Run database migrations to current head
 alembic upgrade head
 
-# Seed the development database (optional)
-python scripts/seed_dev.py
-
-# Run FastAPI development server
-uvicorn app.main:app --reload
+# Start FastAPI development server
+uvicorn app.main:app --reload --port 8000
 ```
-
-The backend server will run on **`http://127.0.0.1:8000`**.
+FastAPI REST API & Docs will be available at **`http://localhost:8000/docs`**.
 
 ### 3. Frontend Setup
 
 ```bash
 cd frontend
 
-# Install npm dependencies
-npm install
+# Install dependencies
+npm ci
 
 # Configure environment variables
-cp .env.example .env.local
+cp .env.local.example .env.local
 
 # Run Next.js development server
 npm run dev
 ```
-
-The frontend application will run on **`http://localhost:3000`**.
+Next.js web client will be available at **`http://localhost:3000`**.
 
 ---
 
-## 📜 License & Contribution
+## 🧪 Testing & Verification Commands
 
-Rework is open-source software licensed under the **Apache 2.0 License**.
+### Run Backend Integration Test Suite (33 Tests)
+```bash
+cd backend
+test_env/bin/pytest tests/ -v
+```
 
-Contributions are welcome! Please check our [ARCHITECTURE.md](./ARCHITECTURE.md) to understand the system design before submitting Pull Requests.
+### Run Frontend Typecheck & Linting
+```bash
+cd frontend
+npm run type-check   # Runs tsc --noEmit
+npm run lint         # Runs eslint app components lib hooks
+npm run build        # Verifies Next.js production bundle build
+```
 
-Built with ❤️ by Abhay Tewatia and the open-source community.
+---
+
+## 📖 Operational Documentation
+
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)**: First-time contributor guide, setup workflow, and PR checklist.
+- **[RUNBOOKS.md](./RUNBOOKS.md)**: Incident response runbooks (deployments, rollbacks, connection pool exhaustion, Redis outage, token revocation).
+- **[SECURITY.md](./SECURITY.md)**: Security vulnerability reporting policy and disclosure process.
+- **[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)**: Community rules and standards.
+
+---
+
+## 📜 License
+
+Rework is open-source software licensed under the **Apache 2.0 License**. See [LICENSE](LICENSE) for details.
