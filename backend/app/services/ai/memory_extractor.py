@@ -1,23 +1,46 @@
 import json
 import logging
-
-from google import genai
+import os
+import sys
+from typing import Any
 
 from app.core.config import (
     GEMINI_API_KEY,
     GEMINI_MODEL,
+    settings
 )
 
 logger = logging.getLogger(__name__)
 
-client = genai.Client(
-    api_key=GEMINI_API_KEY
-)
+_genai_client: Any = None
+
+
+def _is_test_mode() -> bool:
+    return (
+        settings.ai_test_mode
+        or os.getenv("AI_TEST_MODE", "").lower() in ("true", "1", "yes")
+        or "pytest" in sys.modules
+    )
+
+
+def _get_client():
+    global _genai_client
+    if _genai_client is not None:
+        return _genai_client
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY environment variable is not configured")
+    from google import genai
+    _genai_client = genai.Client(api_key=GEMINI_API_KEY)
+    return _genai_client
 
 
 async def extract_memory_from_text(
     text: str
 ):
+    if _is_test_mode() or not settings.ai_enabled:
+        return []
+
+    client = _get_client()
 
     prompt = f"""
 Extract reusable long-term knowledge from this message.
@@ -33,187 +56,44 @@ Create a memory whenever the message contains ANY potentially useful future info
 - requirements
 - project knowledge
 - architecture choices
-- technical discussions
-- bugs
-- fixes
-- learnings
-- progress updates
-- meeting notes
-- recurring interests
-- implementation details
 
-Return ONLY valid JSON or null.
+DO NOT create memories for:
+- general chit chat ("hey", "thanks")
+- ephemeral status ("BRB", "done with lunch")
+- temporary coordination ("are you there?")
 
-Schema:
+FORMAT REQUIREMENT:
+Return ONLY valid JSON matching this schema:
+[
+  {{
+    "content": "clear standalone statement of fact",
+    "importance": 1-5,
+    "tags": ["tag1", "tag2"]
+  }}
+]
 
-{{
-  "memory_type": "knowledge",
-  "domain": "general",
-  "importance_score": 3,
-  "tags": [],
-  "content": "memory text",
-  "assignee": null
-}}
-
-If the message describes an action item or a to-do, set memory_type to "task" and if a person is mentioned to do it, set "assignee" to their name (otherwise null).
-
-Allowed memory_type values:
-
-- knowledge
-- decision
-- task
-- goal
-- plan
-- bug
-- fix
-- requirement
-- preference
-- architecture
-- learning
-- fact
-- meeting_note
-
-Allowed domain values:
-
-- general
-- backend
-- frontend
-- database
-- ai
-- authentication
-- deployment
-- devops
-- testing
-- product
-- business
-
-Rules:
-
-- importance_score must be integer 1-5
-- preserve important context
-- content should be concise but complete
-- tags must be an array of strings
-- do not nest objects
-- do not explain anything
-- output only JSON or null
-- if the message contains any reusable future information, create a memory
-
-Message:
-
+Message text:
 {text}
 """
 
-    logger.info(
-        "memory_extractor_started"
+    response = await client.aio.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt
     )
 
     try:
+        raw_text = response.text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:]
+        if raw_text.startswith("```"):
+            raw_text = raw_text[3:]
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3]
 
-        response = await client.aio.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-        )
-
-        raw_response = response.text.strip()
-
-        raw_response = (
-            raw_response
-            .replace("```json", "")
-            .replace("```", "")
-            .strip()
-        )
-
-        logger.debug(
-            "raw_memory_response",
-            extra={"response": raw_response},
-        )
-
-        if (
-            raw_response.lower()
-            == "null"
-        ):
-            return None
-
-        parsed = json.loads(
-            raw_response
-        )
-
-        parsed.setdefault(
-            "memory_type",
-            "knowledge"
-        )
-
-        parsed.setdefault(
-            "domain",
-            "general"
-        )
-
-        parsed.setdefault(
-            "importance_score",
-            3
-        )
-
-        parsed.setdefault(
-            "tags",
-            []
-        )
-
-        parsed.setdefault(
-            "content",
-            ""
-        )
-        
-        parsed.setdefault(
-            "assignee",
-            None
-        )
-
-        try:
-            parsed["importance_score"] = int(
-                parsed["importance_score"]
-            )
-        except Exception:
-            parsed["importance_score"] = 3
-
-        parsed["importance_score"] = max(
-            1,
-            min(
-                5,
-                parsed["importance_score"]
-            )
-        )
-
-        parsed["content"] = str(
-            parsed["content"]
-        ).strip()
-
-        if not isinstance(
-            parsed["tags"],
-            list
-        ):
-            parsed["tags"] = []
-
-        if not parsed["content"]:
-            return None
-
-        logger.info(
-            "memory_extractor_finished"
-        )
-
-        return parsed
-
-    except json.JSONDecodeError:
-
-        logger.warning(
-            "memory_extractor_invalid_json"
-        )
-
-        return None
-
-    except Exception:
-
-        logger.exception(
-            "memory_extraction_failed"
-        )
-
-        return None
+        memories = json.loads(raw_text.strip())
+        if isinstance(memories, list):
+            return memories
+        return []
+    except Exception as exc:
+        logger.warning("Failed to parse extracted memories from Gemini output", extra={"error": str(exc)})
+        return []
