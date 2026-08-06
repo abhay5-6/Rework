@@ -156,7 +156,7 @@ async def upload_file(
             extra={
                 "workspace_id": workspace_id,
                 "user_id": current_user.id,
-                "filename": filename,
+                "file_name": filename,
                 "content_type": content_type
             }
         )
