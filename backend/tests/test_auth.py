@@ -1,21 +1,25 @@
 import pytest
 from httpx import AsyncClient
+import uuid
 
 pytestmark = pytest.mark.asyncio
 
 async def test_register_user(client: AsyncClient):
+    uid = str(uuid.uuid4())[:8]
+    username = f"newuser_{uid}"
+    email = f"newuser_{uid}@example.com"
     response = await client.post(
         "/auth/register",
         json={
-            "username": "newuser",
-            "email": "newuser@example.com",
-            "password": "password123"
+            "username": username,
+            "email": email,
+            "password": "Password123!"
         }
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["username"] == "newuser"
-    assert data["email"] == "newuser@example.com"
+    assert data["username"] == username
+    assert data["email"] == email
     assert "id" in data
 
 async def test_login_user(client: AsyncClient, test_user):

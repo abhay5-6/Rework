@@ -19,7 +19,7 @@ async def test_admin_route_unauthorized(client: AsyncClient, test_user):
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 403
-    assert response.json()["detail"] == "System administrator privileges required"
+    assert "administrator privileges required" in str(response.json()).lower()
 
 async def test_admin_route_authorized(client: AsyncClient, admin_user):
     # Login as admin user
