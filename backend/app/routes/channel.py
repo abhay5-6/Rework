@@ -3,10 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
 from app.db.session import get_db
-from app.schemas.channel import ChannelSchema, ChannelCreate
+from app.schemas.channel import ChannelSchema, ChannelCreate, ChannelMemberResponse, ChannelMemberCreate
 from app.services import channel_service
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, verify_channel_access
 from app.models.user import User
+from app.utils.permissions import require_channel_admin
 
 router = APIRouter()
 
@@ -26,9 +27,14 @@ async def get_workspace_channels(
 ):
     return await channel_service.get_workspace_channels(db, workspace_id, current_user.id)
 
-
-from app.schemas.channel import ChannelMemberResponse, ChannelMemberCreate
-from app.utils.permissions import require_channel_admin
+@router.get("/{channel_id}", response_model=ChannelSchema)
+async def get_channel_details(
+    channel_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    channel = await verify_channel_access(db, channel_id, current_user)
+    return channel
 
 @router.get("/{channel_id}/members", response_model=List[ChannelMemberResponse])
 async def get_channel_members(
@@ -36,6 +42,7 @@ async def get_channel_members(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    await verify_channel_access(db, channel_id, current_user)
     return await channel_service.get_channel_members(db, channel_id, current_user)
 
 @router.post(
@@ -48,6 +55,7 @@ async def add_channel_member(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    await verify_channel_access(db, channel_id, current_user)
     result = await channel_service.add_channel_member(db, channel_id, member_in.user_id, current_user)
     if result == "user_not_in_workspace":
         raise HTTPException(status_code=400, detail="User is not a member of the workspace")
@@ -65,6 +73,7 @@ async def remove_channel_member(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    await verify_channel_access(db, channel_id, current_user)
     result = await channel_service.remove_channel_member(db, channel_id, user_id, current_user)
     if result == "member_not_found":
         raise HTTPException(status_code=404, detail="Member not found")

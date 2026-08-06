@@ -45,8 +45,10 @@ from app.services.join_request_service import (
 )
 
 from app.core.dependencies import (
-    get_current_user
+    get_current_user,
+    verify_workspace_access
 )
+
 
 from app.models.user import User
 from app.schemas.common import (
@@ -189,18 +191,13 @@ async def reject_request(
     response_model=RoomResponse
 )
 async def get_workspace(
-
     workspace_id: int,
-
-    db: AsyncSession = Depends(
-        get_db
-    ),
-
-    current_user: User = Depends(
-        get_current_user
-    )
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    await verify_workspace_access(db, workspace_id, current_user)
     workspace = await get_workspace_by_id(db, workspace_id, current_user)
+
     if not workspace:
         raise HTTPException(
             status_code=404,
