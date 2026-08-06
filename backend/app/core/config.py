@@ -89,6 +89,7 @@ class Settings:
     max_file_size_bytes: int
     workspace_storage_quota_bytes: int
     disallowed_file_extensions: set[str]
+    allowed_file_mime_types: set[str]
 
 
 def load_settings() -> Settings:
@@ -285,12 +286,12 @@ def load_settings() -> Settings:
 
         max_file_size_bytes=_get_int_env(
             "MAX_FILE_SIZE_BYTES",
-            26214400  # 25 MB
+            26214400
         ),
 
         workspace_storage_quota_bytes=_get_int_env(
             "WORKSPACE_STORAGE_QUOTA_BYTES",
-            524288000  # 500 MB
+            524288000
         ),
 
         disallowed_file_extensions=set(
@@ -300,6 +301,15 @@ def load_settings() -> Settings:
                 ".exe,.bat,.cmd,.sh,.php,.py,.pl,.cgi,.html,.htm,.js,.svg"
             ).split(",")
             if ext.strip()
+        ),
+
+        allowed_file_mime_types=set(
+            mime.strip().lower()
+            for mime in os.getenv(
+                "ALLOWED_FILE_MIME_TYPES",
+                "text/plain,text/csv,application/pdf,image/jpeg,image/png,image/gif,image/webp"
+            ).split(",")
+            if mime.strip()
         )
     )
 
@@ -384,3 +394,4 @@ MAX_FILE_SIZE_BYTES = settings.max_file_size_bytes
 WORKSPACE_STORAGE_QUOTA_BYTES = settings.workspace_storage_quota_bytes
 DISALLOWED_FILE_EXTENSIONS = settings.disallowed_file_extensions
 
+ALLOWED_FILE_MIME_TYPES = settings.allowed_file_mime_types

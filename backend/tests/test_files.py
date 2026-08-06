@@ -82,10 +82,9 @@ async def test_member_upload_and_download_success(client: AsyncClient, db_sessio
     assert download_res_header.status_code == 200
     assert download_res_header.content == b"Hello Rework Security"
 
-    # 3. Download via Query Parameter Token
+    # 3. Query-string bearer tokens are intentionally rejected to prevent leakage.
     download_res_param = await client.get(f"/workspaces/{workspace.id}/files/{filename}?token={token}")
-    assert download_res_param.status_code == 200
-    assert download_res_param.content == b"Hello Rework Security"
+    assert download_res_param.status_code == 401
 
 
 async def test_public_workspace_non_member_upload_rejected(client: AsyncClient, db_session: AsyncSession):

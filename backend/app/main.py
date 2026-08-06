@@ -8,7 +8,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db.database import engine
 from app.routes.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.exceptions import HTTPException
@@ -35,7 +34,6 @@ from app.routes.ai_summary import router as ai_summary_router
 from app.routes.ai_graph import router as ai_graph_router
 import logging
 from uuid import uuid4
-import os
 
 
 configure_logging()
@@ -175,7 +173,6 @@ app.include_router(org_router, prefix="/orgs", tags=["Organizations"])
 app.include_router(channel_router, prefix="/channels", tags=["Channels"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 
-os.makedirs("uploads", exist_ok=True)
 
 @app.get("/")
 def root():
