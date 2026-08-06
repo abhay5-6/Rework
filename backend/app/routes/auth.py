@@ -4,7 +4,7 @@ import secrets
 from urllib.parse import quote, urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.core.rate_limit import limiter
-from app.core.security import create_access_token, hash_password
+from app.core.security import create_access_token, create_websocket_ticket, generate_csrf_token, hash_password
 from app.db.session import get_db
 from app.models.user import User
 from app.models.user_identity import UserIdentity
@@ -46,6 +46,7 @@ async def register(
 @limiter.limit(settings.login_rate_limit)
 async def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
@@ -60,10 +61,69 @@ async def login(
             detail="Please verify your email address before logging in."
         )
 
+    access_token = create_access_token(data={"sub": user.email})
+    csrf_token = generate_csrf_token()
+
+    response.set_cookie(
+        key="access_token_cookie",
+        value=access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        domain=settings.cookie_domain,
+        max_age=settings.access_token_expire_minutes * 60
+    )
+
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        domain=settings.cookie_domain,
+        max_age=settings.access_token_expire_minutes * 60
+    )
+
     return {
-        "access_token": create_access_token(data={"sub": user.email}),
+        "access_token": access_token,
         "token_type": "bearer"
     }
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    """
+    Clears the HttpOnly access token and CSRF cookies upon logout.
+    """
+    response.delete_cookie(
+        key="access_token_cookie",
+        domain=settings.cookie_domain
+    )
+    response.delete_cookie(
+        key="csrf_token",
+        domain=settings.cookie_domain
+    )
+    return {"message": "Logged out successfully"}
+
+
+@router.post("/ws-ticket")
+async def get_websocket_ticket(
+    payload: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generates a short-lived (60s) single-use WebSocket ticket for authenticating workspace WebSocket connections.
+    """
+    workspace_id = payload.get("workspace_id")
+    if not workspace_id or not isinstance(workspace_id, int):
+        raise HTTPException(status_code=400, detail="Invalid or missing workspace_id parameter")
+
+    ticket = create_websocket_ticket(current_user.email, workspace_id)
+    return {
+        "ticket": ticket,
+        "expires_in": 60
+    }
+
 
 
 @router.get("/verify-email")

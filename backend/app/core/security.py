@@ -1,6 +1,9 @@
 import bcrypt
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
+
 
 from app.core.config import (
     SECRET_KEY,
@@ -123,3 +126,74 @@ def decode_access_token(token: str) -> dict:
         )
 
     return payload
+
+
+def create_websocket_ticket(email: str, workspace_id: int) -> str:
+    """
+    Creates a single-use short-lived (60s) JWT ticket for WebSocket authentication.
+    
+    Args:
+        email: User email address subject.
+        workspace_id: The ID of the target workspace.
+        
+    Returns:
+        Encoded short-lived JWT ticket string.
+    """
+    issued_at = datetime.now(timezone.utc)
+    expire = issued_at + timedelta(seconds=60)
+    payload = {
+        "sub": email,
+        "workspace_id": workspace_id,
+        "exp": expire,
+        "iat": issued_at,
+        "token_type": "ws_ticket",
+        "jti": secrets.token_hex(16)
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_websocket_ticket(ticket: str) -> dict:
+    """
+    Decodes and validates a short-lived WebSocket ticket JWT.
+    
+    Args:
+        ticket: Encoded short-lived JWT ticket.
+        
+    Returns:
+        Decoded payload containing sub and workspace_id.
+        
+    Raises:
+        TokenDecodeError: If ticket is expired or invalid.
+    """
+    try:
+        payload = jwt.decode(
+            ticket,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            options={"require_exp": True, "require_iat": True}
+        )
+    except JWTError as exc:
+        raise TokenDecodeError("Invalid or expired WebSocket ticket") from exc
+
+    if payload.get("token_type") != "ws_ticket":
+        raise TokenDecodeError("Invalid token type for WebSocket ticket")
+
+    if not isinstance(payload.get("sub"), str) or not isinstance(payload.get("workspace_id"), int):
+        raise TokenDecodeError("Missing subject or workspace_id claim in ticket")
+
+    return payload
+
+
+def generate_csrf_token() -> str:
+    """Generates a cryptographically secure CSRF token."""
+    return secrets.token_urlsafe(32)
+
+
+def verify_csrf_token(header_token: str | None, cookie_token: str | None) -> bool:
+    """
+    Verifies that the CSRF header token matches the CSRF cookie token securely using constant-time comparison.
+    """
+    if not header_token or not cookie_token:
+        return False
+    return hmac.compare_digest(header_token.strip(), cookie_token.strip())
+

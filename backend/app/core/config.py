@@ -91,6 +91,11 @@ class Settings:
     disallowed_file_extensions: set[str]
     allowed_file_mime_types: set[str]
 
+    cookie_secure: bool
+    cookie_samesite: str
+    cookie_domain: str | None
+
+
 
 def load_settings() -> Settings:
 
@@ -310,8 +315,13 @@ def load_settings() -> Settings:
                 "text/plain,text/csv,application/pdf,image/jpeg,image/png,image/gif,image/webp"
             ).split(",")
             if mime.strip()
-        )
+        ),
+
+        cookie_secure=os.getenv("COOKIE_SECURE", "false").lower() in ("true", "1", "yes"),
+        cookie_samesite=os.getenv("COOKIE_SAMESITE", "lax").lower(),
+        cookie_domain=os.getenv("COOKIE_DOMAIN", None)
     )
+
 
 
 settings = load_settings()
