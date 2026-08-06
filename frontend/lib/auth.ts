@@ -1,19 +1,13 @@
-export function isAuthenticated() {
+import { getMe } from "@/lib/api/auth";
 
-  if (
-    typeof window ===
-    "undefined"
-  ) {
+export async function isAuthenticated(): Promise<boolean> {
+  if (typeof window === "undefined") {
     return false;
   }
-
-  const token =
-    sessionStorage.getItem(
-      "token"
-    ) ||
-    localStorage.getItem(
-      "token"
-    );
-
-  return !!token;
+  try {
+    await getMe();
+    return true;
+  } catch (error) {
+    return false;
+  }
 }

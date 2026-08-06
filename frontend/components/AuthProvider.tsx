@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { getMe } from "@/lib/api/auth";
+import { getMe, logoutUser } from "@/lib/api/auth";
 
 type User = {
   id: number;
@@ -13,8 +13,8 @@ type User = {
 type AuthContextType = {
   isAuthenticated: boolean;
   user: User | null;
-  login: (token: string) => void;
-  logout: () => void;
+  login: (token?: string) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -24,9 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  async function login(token: string) {
-    sessionStorage.setItem("token", token);
-    localStorage.setItem("token", token);
+  async function login() {
     setIsAuthenticated(true);
     try {
       const userData = await getMe();
@@ -36,9 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  function logout() {
-    sessionStorage.removeItem("token");
-    localStorage.removeItem("token");
+  async function logout() {
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error("Failed to logout cleanly from server", error);
+    }
     if (typeof window !== "undefined") {
       localStorage.removeItem("org-storage");
     }
@@ -48,8 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     function handleUnauthorized() {
-      sessionStorage.removeItem("token");
-      localStorage.removeItem("token");
       if (typeof window !== "undefined") {
         localStorage.removeItem("org-storage");
       }
@@ -62,30 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     async function checkAuth() {
-      const token = typeof window !== "undefined"
-        ? (sessionStorage.getItem("token") || localStorage.getItem("token"))
-        : null;
-
-      if (token) {
-        try {
-          const userData = await getMe();
-          setUser(userData);
-          setIsAuthenticated(true);
-        } catch (error: any) {
-          console.error("Failed to fetch user data:", error);
-          if (error?.response?.status === 401) {
-            sessionStorage.removeItem("token");
-            localStorage.removeItem("token");
-            setUser(null);
-            setIsAuthenticated(false);
-          } else {
-            setIsAuthenticated(true);
-          }
-        }
-      } else {
+      try {
+        const userData = await getMe();
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error: any) {
+        setUser(null);
         setIsAuthenticated(false);
+      } finally {
+        setIsLoaded(true);
       }
-      setIsLoaded(true);
     }
 
     checkAuth();
@@ -95,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.removeEventListener("auth-unauthorized", handleUnauthorized);
       }
     };
-  }, []); // Re-run when authentication status changes (like after login)
+  }, []);
 
   if (!isLoaded) {
     return null;
@@ -109,18 +94,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
-
-  const context =
-    useContext(
-      AuthContext
-    );
-
+  const context = useContext(AuthContext);
   if (!context) {
-
-    throw new Error(
-      "useAuth must be used inside AuthProvider"
-    );
+    throw new Error("useAuth must be used inside AuthProvider");
   }
-
   return context;
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { ForceGraphMethods, NodeObject } from "react-force-graph-2d";
 import { Loader2 } from "lucide-react";
+import api from "@/lib/api/client";
 
 // Dynamically import react-force-graph-2d to avoid SSR issues
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
@@ -58,18 +59,9 @@ export default function CognitiveGraph({ roomId }: { roomId: number }) {
   useEffect(() => {
     async function loadGraph() {
       try {
-        const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ai/graph/${roomId}`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
+        const res = await api.get(`/ai/graph/${roomId}`);
         
-        if (!res.ok) {
-          throw new Error(`Failed to load graph: ${res.status}`);
-        }
-        
-        const data = await res.json() as { nodes: GraphApiNode[]; edges: GraphApiEdge[] };
+        const data = res.data as { nodes: GraphApiNode[]; edges: GraphApiEdge[] };
 
         // Format data for react-force-graph
         const nodes = data.nodes.map((node) => ({

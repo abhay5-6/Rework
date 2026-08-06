@@ -38,6 +38,16 @@ export async function login(email: string, password: string) {
   return response.data;
 }
 
+export async function logoutUser() {
+  const response = await api.post("/auth/logout");
+  return response.data;
+}
+
+export async function getWsTicket(workspaceId: number): Promise<{ ticket: string; expires_in: number }> {
+  const response = await api.post("/auth/ws-ticket", { workspace_id: workspaceId });
+  return response.data;
+}
+
 export async function getMe() {
   const response = await api.get("/auth/me");
   return response.data;

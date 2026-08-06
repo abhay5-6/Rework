@@ -3,6 +3,7 @@ import { useSocketStore } from "@/lib/store/socketStore";
 import { useQueueStore } from "@/lib/store/queueStore";
 import { useWorkspaceStore } from "@/lib/store/workspaceStore";
 import { createChatSocket } from "@/lib/websocket/chat";
+import { getWsTicket } from "@/lib/api/auth";
 
 /**
  * Custom hook to manage the WebSocket connection for a specific workspace.
@@ -53,14 +54,8 @@ export function useWorkspaceSocket(
       setIsConnected(false);
     }
 
-    function connectSocket() {
+    async function connectSocket() {
       if (!isMounted) return;
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (!token) {
-        console.warn(`[useWorkspaceSocket] Connection aborted: Unauthorized access to workspace ${roomId}`);
-        setConnectionStatus("Unauthorized");
-        return;
-      }
       if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
         return;
       }
@@ -68,9 +63,20 @@ export function useWorkspaceSocket(
       cleanupSocket();
       setConnectionStatus("Connecting...");
 
-      const ws = createChatSocket(roomId);
+      let ticket: string | undefined;
+      try {
+        const ticketData = await getWsTicket(roomId);
+        ticket = ticketData.ticket;
+      } catch (error) {
+        console.warn(`[useWorkspaceSocket] Ticket request failed, falling back to cookie upgrade for workspace ${roomId}`);
+      }
+
+      if (!isMounted) return;
+
+      const ws = createChatSocket(roomId, ticket);
       socketRef.current = ws;
       setSocket(ws);
+
 
       ws.onopen = () => {
         console.info(`[useWorkspaceSocket] Connected to workspace ${roomId}`);
