@@ -117,17 +117,16 @@ async def websocket_chat(
             await websocket.close(code=1008)
             return
 
-    token = websocket.query_params.get(
-        "token"
+    token = (
+        websocket.query_params.get("ticket")
+        or websocket.cookies.get("access_token_cookie")
+        or websocket.query_params.get("token")
     )
 
     if not token:
-
-        await websocket.close(
-            code=1008
-        )
-
+        await websocket.close(code=1008)
         return
+
 
     async with AsyncSessionLocal() as db:
 

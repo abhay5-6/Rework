@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
     TokenDecodeError,
-    decode_access_token
+    decode_access_token,
+    decode_websocket_ticket
 )
 from app.models.user import User
 from app.models.workspace import Workspace
@@ -18,20 +19,31 @@ async def authenticate_websocket(
     workspace_id: int,
     db: AsyncSession
 ):
+    """
+    Authenticates a WebSocket connection using either a short-lived WebSocket ticket or a standard access token/cookie.
+    Validates workspace membership permissions.
+    """
+    email = None
 
+    # 1. Try single-use short-lived WebSocket ticket first
     try:
+        payload = decode_websocket_ticket(token)
+        if payload.get("workspace_id") == workspace_id:
+            email = payload.get("sub")
+    except TokenDecodeError:
+        pass
 
-        payload = decode_access_token(
-            token
-        )
-
-        email = payload.get("sub")
-
-        if not email:
+    # 2. Fallback to standard access token
+    if not email:
+        try:
+            payload = decode_access_token(token)
+            email = payload.get("sub")
+        except TokenDecodeError:
             return None
 
-    except TokenDecodeError:
+    if not email:
         return None
+
 
     user_result = await db.execute(
         select(User).where(
